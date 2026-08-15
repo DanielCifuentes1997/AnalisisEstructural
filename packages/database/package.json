@@ -2,10 +2,18 @@
   "name": "@proyecto/database",
   "version": "1.0.0",
   "main": "index.ts",
+  "scripts": {
+    "db:generate": "dotenv -e ../../.env -- prisma generate --schema prisma/schema.prisma",
+    "db:migrate": "dotenv -e ../../.env -- prisma migrate dev --schema prisma/schema.prisma",
+    "db:migrate:deploy": "dotenv -e ../../.env -- prisma migrate deploy --schema prisma/schema.prisma",
+    "db:status": "dotenv -e ../../.env -- prisma migrate status --schema prisma/schema.prisma",
+    "db:studio": "dotenv -e ../../.env -- prisma studio --schema prisma/schema.prisma"
+  },
   "dependencies": {
     "@prisma/client": "^5.0.0"
   },
   "devDependencies": {
-    "prisma": "^5.0.0"
+    "prisma": "^5.0.0",
+    "dotenv-cli": "^7.4.2"
   }
 }
