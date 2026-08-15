@@ -1,0 +1,29 @@
+{
+  "name": "api",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "dotenv -e ../../.env -- nest start --watch",
+    "build": "nest build",
+    "start": "dotenv -e ../../.env -- node dist/main.js",
+    "lint": "eslint --max-warnings 0",
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.2.1",
+    "@nestjs/core": "^11.2.1",
+    "@nestjs/platform-express": "^11.2.1",
+    "@proyecto/database": "workspace:^",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11.0.24",
+    "@repo/eslint-config": "workspace:^",
+    "@repo/typescript-config": "workspace:^",
+    "@types/node": "^22.15.3",
+    "dotenv-cli": "^7.4.2",
+    "eslint": "^9.39.1",
+    "typescript": "5.9.2"
+  }
+}
