@@ -22,6 +22,27 @@ enum UserStatus {
   SUSPENDED
 }
 
+enum RequestState {
+  REQUESTED
+  WAITING_PROFESSIONAL
+  ASSIGNED
+  SCHEDULED
+  IN_PROGRESS
+  VERIFICATION_PENDING
+  REPORT_PENDING
+  COMPLETED
+  CANCELLED
+  REASSIGNMENT_REQUIRED
+  SECOND_VISIT_REQUIRED
+}
+
+enum HabitabilityStatus {
+  GREEN
+  YELLOW
+  ORANGE
+  RED
+}
+
 model Users {
   id                  String                @id @default(uuid())
   phone_number        String                @unique
@@ -31,6 +52,7 @@ model Users {
   updated_at          DateTime              @updatedAt
   
   ProfessionalProfile ProfessionalProfiles?
+  property_requests   PropertyRequests[]
 }
 
 model ProfessionalProfiles {
@@ -43,4 +65,57 @@ model ProfessionalProfiles {
   updated_at      DateTime @updatedAt
 
   user            Users    @relation(fields: [user_id], references: [id])
+  visits          Visits[]
+}
+
+model PropertyRequests {
+  id               String       @id @default(uuid())
+  citizen_id       String
+  geom             Unsupported("geography(Point, 4326)")
+  structural_type  String
+  damages_json     Json
+  priority_score   Int          @default(0)
+  state            RequestState @default(REQUESTED)
+  created_at       DateTime     @default(now())
+  updated_at       DateTime     @updatedAt
+
+  citizen          Users        @relation(fields: [citizen_id], references: [id])
+  visits           Visits[]
+}
+
+model Visits {
+  id               String   @id @default(uuid())
+  request_id       String
+  professional_id  String
+  otp_hash         String
+  checkin_location Unsupported("geography(Point, 4326)")?
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  request          PropertyRequests     @relation(fields: [request_id], references: [id])
+  professional     ProfessionalProfiles @relation(fields: [professional_id], references: [id])
+  report           Reports?
+}
+
+model Reports {
+  id                  String             @id @default(uuid())
+  visit_id            String             @unique
+  methodology_version String
+  habitability_status HabitabilityStatus
+  evidence_urls       Json
+  signature_hash      String
+  created_at          DateTime           @default(now())
+
+  visit               Visits             @relation(fields: [visit_id], references: [id])
+}
+
+model AuditLogs {
+  id          String   @id @default(uuid())
+  timestamp   DateTime @default(now())
+  actor_id    String
+  action      String
+  resource_id String
+  prior_state String?
+  new_state   String?
+  ip_address  String?
 }
