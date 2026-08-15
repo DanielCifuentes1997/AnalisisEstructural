@@ -1,4 +1,14 @@
-import { Body, Controller, Get, HttpCode, Post, Query, UseGuards } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Query,
+  UseGuards,
+} from "@nestjs/common";
 import {
   createPropertyRequestSchema,
   heatmapQuerySchema,
@@ -41,5 +51,16 @@ export class RequestsController {
     @Query(new ZodValidationPipe(heatmapQuerySchema)) query: HeatmapQuery,
   ) {
     return this.requestsService.getHeatmap(query.bbox);
+  }
+
+  // Debe ir despues de "heatmap": si estuviera antes, Nest interpretaria
+  // GET /v1/requests/heatmap como si "heatmap" fuera el :id.
+  @Get(":id")
+  @Roles("CITIZEN")
+  findOne(
+    @CurrentUser() user: AccessTokenPayload,
+    @Param("id", ParseUUIDPipe) id: string,
+  ) {
+    return this.requestsService.findOneForCitizen(user.sub, id);
   }
 }

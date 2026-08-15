@@ -1,5 +1,10 @@
 import { randomUUID } from "node:crypto";
-import { Injectable, InternalServerErrorException } from "@nestjs/common";
+import {
+  ForbiddenException,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from "@nestjs/common";
 import type {
   CreatePropertyRequestInput,
   HeatmapQuery,
@@ -92,6 +97,22 @@ export class RequestsService {
       where: { citizen_id: citizenId },
       orderBy: { created_at: "desc" },
     });
+  }
+
+  async findOneForCitizen(citizenId: string, requestId: string) {
+    const request = await this.prisma.propertyRequests.findUnique({
+      where: { id: requestId },
+    });
+
+    if (!request) {
+      throw new NotFoundException("Solicitud no encontrada");
+    }
+
+    if (request.citizen_id !== citizenId) {
+      throw new ForbiddenException("Esta solicitud no te pertenece");
+    }
+
+    return request;
   }
 
   async getHeatmap(bbox: HeatmapQuery["bbox"]) {
