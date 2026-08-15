@@ -8,6 +8,10 @@ import { JwtService } from "@nestjs/jwt";
 import type { RequestOtpInput, VerifyOtpInput } from "@proyecto/shared-types";
 import { PrismaService } from "../prisma/prisma.service";
 import { OTP_PROVIDER, type OtpProvider } from "./otp/otp-provider.interface";
+import type {
+  AccessTokenPayload,
+  RefreshTokenPayload,
+} from "./types/jwt-payload.interface";
 
 const ACCESS_TOKEN_TTL = "15m";
 const REFRESH_TOKEN_TTL = "30d";
@@ -44,14 +48,18 @@ export class AuthService {
       throw new ForbiddenException("Esta cuenta ha sido suspendida");
     }
 
-    const accessToken = await this.jwtService.signAsync(
-      { sub: user.id, role: user.role },
-      { expiresIn: ACCESS_TOKEN_TTL },
-    );
-    const refreshToken = await this.jwtService.signAsync(
-      { sub: user.id, type: "refresh" },
-      { expiresIn: REFRESH_TOKEN_TTL },
-    );
+    const accessPayload: AccessTokenPayload = { sub: user.id, role: user.role };
+    const refreshPayload: RefreshTokenPayload = {
+      sub: user.id,
+      type: "refresh",
+    };
+
+    const accessToken = await this.jwtService.signAsync(accessPayload, {
+      expiresIn: ACCESS_TOKEN_TTL,
+    });
+    const refreshToken = await this.jwtService.signAsync(refreshPayload, {
+      expiresIn: REFRESH_TOKEN_TTL,
+    });
 
     return { user, accessToken, refreshToken };
   }

@@ -7,7 +7,10 @@
     "build": "nest build",
     "start": "dotenv -e ../../.env -- node dist/main.js",
     "lint": "eslint --max-warnings 0",
-    "check-types": "tsc --noEmit"
+    "check-types": "tsc --noEmit",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:cov": "jest --coverage"
   },
   "dependencies": {
     "@nestjs/common": "^11.2.1",
@@ -24,12 +27,27 @@
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.24",
+    "@nestjs/testing": "^11.2.1",
     "@repo/eslint-config": "workspace:^",
     "@repo/typescript-config": "workspace:^",
     "@types/express": "^5.0.6",
+    "@types/jest": "^30.0.0",
     "@types/node": "^22.15.3",
     "dotenv-cli": "^7.4.2",
     "eslint": "^9.39.1",
+    "jest": "^30.4.2",
+    "ts-jest": "^29.4.12",
     "typescript": "5.9.2"
+  },
+  "jest": {
+    "moduleFileExtensions": ["js", "json", "ts"],
+    "rootDir": "src",
+    "testRegex": ".*\\.spec\\.ts$",
+    "transform": {
+      "^.+\\.(t|j)s$": "ts-jest"
+    },
+    "collectCoverageFrom": ["**/*.(t|j)s"],
+    "coverageDirectory": "../coverage",
+    "testEnvironment": "node"
   }
 }

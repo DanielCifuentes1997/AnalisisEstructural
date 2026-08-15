@@ -4,6 +4,8 @@ import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import { AuthModule } from "./auth/auth.module";
 import { HealthController } from "./health/health.controller";
 import { PrismaModule } from "./prisma/prisma.module";
+import { RequestsModule } from "./requests/requests.module";
+import { WorkflowModule } from "./workflow/workflow.module";
 
 @Module({
   imports: [
@@ -12,6 +14,8 @@ import { PrismaModule } from "./prisma/prisma.module";
     }),
     PrismaModule,
     AuthModule,
+    WorkflowModule,
+    RequestsModule,
   ],
   controllers: [HealthController],
   providers: [
