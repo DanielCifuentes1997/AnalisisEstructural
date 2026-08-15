@@ -1,7 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { Injectable, InternalServerErrorException } from "@nestjs/common";
-import type { CreatePropertyRequestInput } from "@proyecto/shared-types";
+import type {
+  CreatePropertyRequestInput,
+  HeatmapQuery,
+} from "@proyecto/shared-types";
 import { PrismaService } from "../prisma/prisma.service";
+import { RequestStateMachine } from "../workflow/request-state-machine.service";
+import { fuzzCoordinates } from "./geo-fuzzing.util";
 
 interface PropertyRequestRow {
   id: string;
@@ -16,9 +21,21 @@ interface PropertyRequestRow {
   longitude: number;
 }
 
+interface HeatmapRow {
+  id: string;
+  structural_type: string;
+  state: string;
+  created_at: Date;
+  latitude: number;
+  longitude: number;
+}
+
 @Injectable()
 export class RequestsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly stateMachine: RequestStateMachine,
+  ) {}
 
   async create(citizenId: string, input: CreatePropertyRequestInput) {
     const id = randomUUID();
@@ -58,7 +75,16 @@ export class RequestsService {
       throw new InternalServerErrorException("No se pudo crear la solicitud");
     }
 
-    return row;
+    // Todavia no existe verificacion espacial automatizada (Emergency
+    // polygons, Seccion 42), asi que la solicitud pasa de inmediato al
+    // pool de asignacion en cuanto queda registrada.
+    this.stateMachine.assertTransition("REQUESTED", "WAITING_PROFESSIONAL");
+    await this.prisma.propertyRequests.update({
+      where: { id: row.id },
+      data: { state: "WAITING_PROFESSIONAL" },
+    });
+
+    return { ...row, state: "WAITING_PROFESSIONAL" };
   }
 
   findAllForCitizen(citizenId: string) {
@@ -66,5 +92,27 @@ export class RequestsService {
       where: { citizen_id: citizenId },
       orderBy: { created_at: "desc" },
     });
+  }
+
+  async getHeatmap(bbox: HeatmapQuery["bbox"]) {
+    const rows = await this.prisma.$queryRaw<HeatmapRow[]>`
+      SELECT id, structural_type, state, created_at,
+             ST_Y(geom::geometry) AS latitude,
+             ST_X(geom::geometry) AS longitude
+      FROM "PropertyRequests"
+      WHERE state = 'WAITING_PROFESSIONAL'
+        AND ST_Intersects(
+          geom,
+          ST_MakeEnvelope(${bbox.minLon}, ${bbox.minLat}, ${bbox.maxLon}, ${bbox.maxLat}, 4326)::geography
+        )
+    `;
+
+    // Privacidad tactica (Seccion 17 y 27): los profesionales no
+    // asignados nunca reciben la coordenada exacta, solo un punto
+    // desplazado aleatoriamente entre 150 y 250 metros.
+    return rows.map(({ latitude, longitude, ...rest }) => ({
+      ...rest,
+      ...fuzzCoordinates(latitude, longitude),
+    }));
   }
 }

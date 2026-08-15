@@ -1,7 +1,9 @@
-import { Body, Controller, Get, HttpCode, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, HttpCode, Post, Query, UseGuards } from "@nestjs/common";
 import {
   createPropertyRequestSchema,
+  heatmapQuerySchema,
   type CreatePropertyRequestInput,
+  type HeatmapQuery,
 } from "@proyecto/shared-types";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { Roles } from "../auth/decorators/roles.decorator";
@@ -31,5 +33,13 @@ export class RequestsController {
   @Roles("CITIZEN")
   findMine(@CurrentUser() user: AccessTokenPayload) {
     return this.requestsService.findAllForCitizen(user.sub);
+  }
+
+  @Get("heatmap")
+  @Roles("PROFESSIONAL")
+  heatmap(
+    @Query(new ZodValidationPipe(heatmapQuerySchema)) query: HeatmapQuery,
+  ) {
+    return this.requestsService.getHeatmap(query.bbox);
   }
 }
