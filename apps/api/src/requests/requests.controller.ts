@@ -21,12 +21,16 @@ import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { RolesGuard } from "../auth/guards/roles.guard";
 import type { AccessTokenPayload } from "../auth/types/jwt-payload.interface";
 import { ZodValidationPipe } from "../common/pipes/zod-validation.pipe";
+import { VisitsService } from "../visits/visits.service";
 import { RequestsService } from "./requests.service";
 
 @Controller("v1/requests")
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class RequestsController {
-  constructor(private readonly requestsService: RequestsService) {}
+  constructor(
+    private readonly requestsService: RequestsService,
+    private readonly visitsService: VisitsService,
+  ) {}
 
   @Post()
   @HttpCode(201)
@@ -62,5 +66,14 @@ export class RequestsController {
     @Param("id", ParseUUIDPipe) id: string,
   ) {
     return this.requestsService.findOneForCitizen(user.sub, id);
+  }
+
+  @Post(":id/accept")
+  @Roles("VOLUNTEER")
+  accept(
+    @CurrentUser() user: AccessTokenPayload,
+    @Param("id", ParseUUIDPipe) id: string,
+  ) {
+    return this.visitsService.acceptRequest(user.sub, id);
   }
 }
