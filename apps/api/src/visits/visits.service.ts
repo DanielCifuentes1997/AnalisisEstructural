@@ -1,12 +1,21 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
+  UnauthorizedException,
 } from "@nestjs/common";
+import type {
+  CheckinInput,
+  SubmitVisitNoteInput,
+  VerifyPinInput,
+} from "@proyecto/shared-types";
 import { PrismaService } from "../prisma/prisma.service";
 import { RequestStateMachine } from "../workflow/request-state-machine.service";
 import { generatePin, hashPin } from "./pin.util";
+
+const CHECKIN_MAX_DISTANCE_METERS = 100;
 
 interface AcceptedRequestRow {
   id: string;
@@ -16,6 +25,10 @@ interface AcceptedRequestRow {
   latitude: number;
   longitude: number;
   citizen_phone: string;
+}
+
+interface DistanceRow {
+  distance_meters: number;
 }
 
 @Injectable()
@@ -56,7 +69,7 @@ export class VisitsService {
 
     const pin = generatePin();
 
-    await this.prisma.$transaction([
+    const [visit] = await this.prisma.$transaction([
       this.prisma.visits.create({
         data: {
           request_id: requestId,
@@ -88,6 +101,117 @@ export class VisitsService {
       WHERE pr.id = ${requestId}
     `;
 
-    return rows[0];
+    return { ...rows[0], visit_id: visit.id };
+  }
+
+  async checkin(userId: string, visitId: string, input: CheckinInput) {
+    const visit = await this.getOwnedVisit(userId, visitId);
+
+    this.stateMachine.assertTransition(visit.request.state, "IN_PROGRESS");
+    this.stateMachine.assertTransition("IN_PROGRESS", "VERIFICATION_PENDING");
+
+    const distanceRows = await this.prisma.$queryRaw<DistanceRow[]>`
+      SELECT ST_Distance(
+        geom,
+        ST_SetSRID(ST_MakePoint(${input.longitude}, ${input.latitude}), 4326)::geography
+      ) AS distance_meters
+      FROM "PropertyRequests"
+      WHERE id = ${visit.request_id}
+    `;
+    const distance = distanceRows[0]?.distance_meters ?? Number.POSITIVE_INFINITY;
+
+    if (distance > CHECKIN_MAX_DISTANCE_METERS) {
+      throw new BadRequestException(
+        `Estas a ${Math.round(distance)}m de la vivienda. Debes estar a menos de ${CHECKIN_MAX_DISTANCE_METERS}m para hacer check-in.`,
+      );
+    }
+
+    await this.prisma.$executeRaw`
+      UPDATE "Visits"
+      SET checkin_location = ST_SetSRID(ST_MakePoint(${input.longitude}, ${input.latitude}), 4326)::geography
+      WHERE id = ${visitId}
+    `;
+
+    await this.prisma.propertyRequests.update({
+      where: { id: visit.request_id },
+      data: { state: "VERIFICATION_PENDING" },
+    });
+
+    return {
+      message: "Check-in exitoso. Solicita el PIN al ciudadano.",
+      distance_meters: Math.round(distance),
+    };
+  }
+
+  async verifyPin(userId: string, visitId: string, input: VerifyPinInput) {
+    const visit = await this.getOwnedVisit(userId, visitId);
+
+    this.stateMachine.assertTransition(visit.request.state, "NOTE_PENDING");
+
+    if (hashPin(input.pin) !== visit.otp_hash) {
+      throw new UnauthorizedException("PIN incorrecto");
+    }
+
+    await this.prisma.propertyRequests.update({
+      where: { id: visit.request_id },
+      data: { state: "NOTE_PENDING" },
+    });
+
+    return { message: "PIN verificado. Ya puedes registrar la nota de visita." };
+  }
+
+  async submitNote(
+    userId: string,
+    visitId: string,
+    input: SubmitVisitNoteInput,
+  ) {
+    const visit = await this.getOwnedVisit(userId, visitId);
+
+    this.stateMachine.assertTransition(visit.request.state, "COMPLETED");
+
+    const note = await this.prisma.visitNotes.create({
+      data: {
+        visit_id: visitId,
+        general_comments: input.general_comments,
+        evidence_urls: [],
+        zones: {
+          create: input.zones.map((zone) => ({
+            zone_name: zone.zone_name,
+            status: zone.status,
+            comment: zone.comment,
+          })),
+        },
+      },
+      include: { zones: true },
+    });
+
+    await this.prisma.propertyRequests.update({
+      where: { id: visit.request_id },
+      data: { state: "COMPLETED" },
+    });
+
+    return note;
+  }
+
+  private async getOwnedVisit(userId: string, visitId: string) {
+    const volunteer = await this.prisma.volunteerProfiles.findUnique({
+      where: { user_id: userId },
+    });
+    if (!volunteer) {
+      throw new ForbiddenException("No tienes un perfil de voluntario");
+    }
+
+    const visit = await this.prisma.visits.findUnique({
+      where: { id: visitId },
+      include: { request: true },
+    });
+    if (!visit) {
+      throw new NotFoundException("Visita no encontrada");
+    }
+    if (visit.volunteer_id !== volunteer.id) {
+      throw new ForbiddenException("Esta visita no te pertenece");
+    }
+
+    return visit;
   }
 }
