@@ -83,13 +83,13 @@ export class RequestsService {
     // Todavia no existe verificacion espacial automatizada (Emergency
     // polygons, Seccion 42), asi que la solicitud pasa de inmediato al
     // pool de asignacion en cuanto queda registrada.
-    this.stateMachine.assertTransition("REQUESTED", "WAITING_PROFESSIONAL");
+    this.stateMachine.assertTransition("REQUESTED", "WAITING_VOLUNTEER");
     await this.prisma.propertyRequests.update({
       where: { id: row.id },
-      data: { state: "WAITING_PROFESSIONAL" },
+      data: { state: "WAITING_VOLUNTEER" },
     });
 
-    return { ...row, state: "WAITING_PROFESSIONAL" };
+    return { ...row, state: "WAITING_VOLUNTEER" };
   }
 
   findAllForCitizen(citizenId: string) {
@@ -121,14 +121,14 @@ export class RequestsService {
              ST_Y(geom::geometry) AS latitude,
              ST_X(geom::geometry) AS longitude
       FROM "PropertyRequests"
-      WHERE state = 'WAITING_PROFESSIONAL'
+      WHERE state = 'WAITING_VOLUNTEER'
         AND ST_Intersects(
           geom,
           ST_MakeEnvelope(${bbox.minLon}, ${bbox.minLat}, ${bbox.maxLon}, ${bbox.maxLat}, 4326)::geography
         )
     `;
 
-    // Privacidad tactica (Seccion 17 y 27): los profesionales no
+    // Privacidad tactica (Seccion 17 y 27): los voluntarios no
     // asignados nunca reciben la coordenada exacta, solo un punto
     // desplazado aleatoriamente entre 150 y 250 metros.
     return rows.map(({ latitude, longitude, ...rest }) => ({

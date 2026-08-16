@@ -4,23 +4,22 @@ import { RequestStateMachine } from "./request-state-machine.service";
 
 const ALL_STATES: RequestState[] = [
   "REQUESTED",
-  "WAITING_PROFESSIONAL",
+  "WAITING_VOLUNTEER",
   "ASSIGNED",
   "SCHEDULED",
   "IN_PROGRESS",
   "VERIFICATION_PENDING",
-  "REPORT_PENDING",
+  "NOTE_PENDING",
   "COMPLETED",
   "CANCELLED",
   "REASSIGNMENT_REQUIRED",
-  "SECOND_VISIT_REQUIRED",
 ];
 
 const VALID_TRANSITIONS: [RequestState, RequestState][] = [
-  ["REQUESTED", "WAITING_PROFESSIONAL"],
+  ["REQUESTED", "WAITING_VOLUNTEER"],
   ["REQUESTED", "CANCELLED"],
-  ["WAITING_PROFESSIONAL", "ASSIGNED"],
-  ["WAITING_PROFESSIONAL", "CANCELLED"],
+  ["WAITING_VOLUNTEER", "ASSIGNED"],
+  ["WAITING_VOLUNTEER", "CANCELLED"],
   ["ASSIGNED", "SCHEDULED"],
   ["ASSIGNED", "IN_PROGRESS"],
   ["ASSIGNED", "REASSIGNMENT_REQUIRED"],
@@ -31,11 +30,10 @@ const VALID_TRANSITIONS: [RequestState, RequestState][] = [
   ["IN_PROGRESS", "VERIFICATION_PENDING"],
   ["IN_PROGRESS", "REASSIGNMENT_REQUIRED"],
   ["IN_PROGRESS", "CANCELLED"],
-  ["VERIFICATION_PENDING", "REPORT_PENDING"],
+  ["VERIFICATION_PENDING", "NOTE_PENDING"],
   ["VERIFICATION_PENDING", "REASSIGNMENT_REQUIRED"],
-  ["REPORT_PENDING", "COMPLETED"],
-  ["REASSIGNMENT_REQUIRED", "WAITING_PROFESSIONAL"],
-  ["SECOND_VISIT_REQUIRED", "WAITING_PROFESSIONAL"],
+  ["NOTE_PENDING", "COMPLETED"],
+  ["REASSIGNMENT_REQUIRED", "WAITING_VOLUNTEER"],
 ];
 
 const TERMINAL_STATES: RequestState[] = ["COMPLETED", "CANCELLED"];
@@ -62,18 +60,18 @@ describe("RequestStateMachine", () => {
     it("rechaza saltos que se saltan pasos obligatorios", () => {
       expect(machine.canTransition("REQUESTED", "ASSIGNED")).toBe(false);
       expect(machine.canTransition("REQUESTED", "COMPLETED")).toBe(false);
-      expect(machine.canTransition("WAITING_PROFESSIONAL", "IN_PROGRESS")).toBe(
+      expect(machine.canTransition("WAITING_VOLUNTEER", "IN_PROGRESS")).toBe(
         false,
       );
     });
 
     it("rechaza retroceder a un estado anterior", () => {
       expect(machine.canTransition("ASSIGNED", "REQUESTED")).toBe(false);
-      expect(machine.canTransition("COMPLETED", "REPORT_PENDING")).toBe(false);
+      expect(machine.canTransition("COMPLETED", "NOTE_PENDING")).toBe(false);
     });
 
-    it("no permite pasar a REPORT_PENDING sin PIN verificado", () => {
-      expect(machine.canTransition("IN_PROGRESS", "REPORT_PENDING")).toBe(
+    it("no permite pasar a NOTE_PENDING sin PIN verificado", () => {
+      expect(machine.canTransition("IN_PROGRESS", "NOTE_PENDING")).toBe(
         false,
       );
     });

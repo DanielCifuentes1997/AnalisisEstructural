@@ -46,7 +46,7 @@ export class RequestsController {
   }
 
   @Get("heatmap")
-  @Roles("PROFESSIONAL")
+  @Roles("VOLUNTEER")
   heatmap(
     @Query(new ZodValidationPipe(heatmapQuerySchema)) query: HeatmapQuery,
   ) {

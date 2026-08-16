@@ -12,7 +12,7 @@ datasource db {
 
 enum Role {
   CITIZEN
-  PROFESSIONAL
+  VOLUNTEER
   ADMIN
   COORD_LOCAL
 }
@@ -24,48 +24,48 @@ enum UserStatus {
 
 enum RequestState {
   REQUESTED
-  WAITING_PROFESSIONAL
+  WAITING_VOLUNTEER
   ASSIGNED
   SCHEDULED
   IN_PROGRESS
   VERIFICATION_PENDING
-  REPORT_PENDING
+  NOTE_PENDING
   COMPLETED
   CANCELLED
   REASSIGNMENT_REQUIRED
-  SECOND_VISIT_REQUIRED
 }
 
-enum HabitabilityStatus {
-  GREEN
-  YELLOW
-  ORANGE
-  RED
+enum ZoneStatus {
+  SAFE
+  CAUTION
+  DANGEROUS
 }
 
 model Users {
-  id                  String                @id @default(uuid())
-  phone_number        String                @unique
-  role                Role                  @default(CITIZEN)
-  status              UserStatus            @default(ACTIVE)
-  created_at          DateTime              @default(now())
-  updated_at          DateTime              @updatedAt
-  
-  ProfessionalProfile ProfessionalProfiles?
-  property_requests   PropertyRequests[]
+  id                String              @id @default(uuid())
+  phone_number      String              @unique
+  role              Role                @default(CITIZEN)
+  status            UserStatus          @default(ACTIVE)
+  created_at        DateTime            @default(now())
+  updated_at        DateTime            @updatedAt
+
+  VolunteerProfile  VolunteerProfiles?
+  property_requests PropertyRequests[]
 }
 
-model ProfessionalProfiles {
-  id              String   @id @default(uuid())
-  user_id         String   @unique
-  license_number  String   @unique
-  profession_type String
-  is_verified     Boolean  @default(false)
-  created_at      DateTime @default(now())
-  updated_at      DateTime @updatedAt
+// Voluntarios de acompañamiento comunitario: sin cruce contra COPNIA/CPNAA,
+// solo cedula + profesion auto-declarada. No emiten dictamenes oficiales.
+model VolunteerProfiles {
+  id                  String   @id @default(uuid())
+  user_id             String   @unique
+  id_document_number  String   @unique
+  declared_profession String
+  is_active           Boolean  @default(true)
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
 
-  user            Users    @relation(fields: [user_id], references: [id])
-  visits          Visits[]
+  user                Users    @relation(fields: [user_id], references: [id])
+  visits              Visits[]
 }
 
 model PropertyRequests {
@@ -86,27 +86,39 @@ model PropertyRequests {
 model Visits {
   id               String   @id @default(uuid())
   request_id       String
-  professional_id  String
+  volunteer_id     String
   otp_hash         String
   checkin_location Unsupported("geography(Point, 4326)")?
   created_at       DateTime @default(now())
   updated_at       DateTime @updatedAt
 
-  request          PropertyRequests     @relation(fields: [request_id], references: [id])
-  professional     ProfessionalProfiles @relation(fields: [professional_id], references: [id])
-  report           Reports?
+  request          PropertyRequests  @relation(fields: [request_id], references: [id])
+  volunteer        VolunteerProfiles @relation(fields: [volunteer_id], references: [id])
+  visit_note       VisitNotes?
 }
 
-model Reports {
-  id                  String             @id @default(uuid())
-  visit_id            String             @unique
-  methodology_version String
-  habitability_status HabitabilityStatus
-  evidence_urls       Json
-  signature_hash      String
-  created_at          DateTime           @default(now())
+// Nota informal de acompañamiento (no un dictamen oficial): por zonas/
+// habitaciones, cada una con su propio estado y comentario, mas un campo
+// de comentarios generales de la visita completa.
+model VisitNotes {
+  id               String   @id @default(uuid())
+  visit_id         String   @unique
+  general_comments String?
+  evidence_urls    Json
+  created_at       DateTime @default(now())
 
-  visit               Visits             @relation(fields: [visit_id], references: [id])
+  visit            Visits           @relation(fields: [visit_id], references: [id])
+  zones            VisitNoteZones[]
+}
+
+model VisitNoteZones {
+  id            String     @id @default(uuid())
+  visit_note_id String
+  zone_name     String
+  status        ZoneStatus
+  comment       String?
+
+  visit_note    VisitNotes @relation(fields: [visit_note_id], references: [id])
 }
 
 model AuditLogs {

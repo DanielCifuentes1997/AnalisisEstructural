@@ -2,28 +2,23 @@ import { BadRequestException, Injectable } from "@nestjs/common";
 import type { RequestState } from "@proyecto/shared-types";
 
 /**
- * Transiciones permitidas de PropertyRequests.state (Seccion 44 del
- * documento de diseno). REASSIGNMENT_REQUIRED y SECOND_VISIT_REQUIRED
- * reingresan al pool de asignacion (WAITING_PROFESSIONAL) en vez de ser
- * terminales: el primero porque la brigada abandono la ruta (Seccion 62,
- * boton de panico), el segundo porque un dictamen Amarillo exige una
- * segunda inspeccion con otro profesional (Seccion 22).
+ * Transiciones permitidas de PropertyRequests.state. Este es un canal de
+ * acompanamiento comunitario informal (no emite dictamenes oficiales), asi
+ * que no hay escalamiento obligatorio por protocolo oficial: si una zona
+ * queda marcada como peligrosa, es el ciudadano quien decide y la
+ * autoridad competente quien actua, no la plataforma. REASSIGNMENT_REQUIRED
+ * reingresa al pool de asignacion (WAITING_VOLUNTEER) porque el voluntario
+ * abandono la ruta.
  */
 const ALLOWED_TRANSITIONS: Record<RequestState, RequestState[]> = {
-  REQUESTED: ["WAITING_PROFESSIONAL", "CANCELLED"],
-  WAITING_PROFESSIONAL: ["ASSIGNED", "CANCELLED"],
-  ASSIGNED: [
-    "SCHEDULED",
-    "IN_PROGRESS",
-    "REASSIGNMENT_REQUIRED",
-    "CANCELLED",
-  ],
+  REQUESTED: ["WAITING_VOLUNTEER", "CANCELLED"],
+  WAITING_VOLUNTEER: ["ASSIGNED", "CANCELLED"],
+  ASSIGNED: ["SCHEDULED", "IN_PROGRESS", "REASSIGNMENT_REQUIRED", "CANCELLED"],
   SCHEDULED: ["IN_PROGRESS", "REASSIGNMENT_REQUIRED", "CANCELLED"],
   IN_PROGRESS: ["VERIFICATION_PENDING", "REASSIGNMENT_REQUIRED", "CANCELLED"],
-  VERIFICATION_PENDING: ["REPORT_PENDING", "REASSIGNMENT_REQUIRED"],
-  REPORT_PENDING: ["COMPLETED"],
-  REASSIGNMENT_REQUIRED: ["WAITING_PROFESSIONAL"],
-  SECOND_VISIT_REQUIRED: ["WAITING_PROFESSIONAL"],
+  VERIFICATION_PENDING: ["NOTE_PENDING", "REASSIGNMENT_REQUIRED"],
+  NOTE_PENDING: ["COMPLETED"],
+  REASSIGNMENT_REQUIRED: ["WAITING_VOLUNTEER"],
   COMPLETED: [],
   CANCELLED: [],
 };
