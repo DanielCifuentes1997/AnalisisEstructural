@@ -2,25 +2,28 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import type { HousingType } from "@proyecto/shared-types";
 import { createPropertyRequestSchema } from "@proyecto/shared-types";
 import { Card } from "../../../../components/ui/Card";
+import {
+  AddressStep,
+  type AddressValue,
+} from "../../../../components/requests/wizard/AddressStep";
 import {
   DamagesStep,
   type DamagesValue,
 } from "../../../../components/requests/wizard/DamagesStep";
-import {
-  LocationStep,
-  type LocationValue,
-} from "../../../../components/requests/wizard/LocationStep";
+import { HousingTypeStep } from "../../../../components/requests/wizard/HousingTypeStep";
 import { PhotosStep } from "../../../../components/requests/wizard/PhotosStep";
+import { ReporterStep } from "../../../../components/requests/wizard/ReporterStep";
 import { ReviewStep } from "../../../../components/requests/wizard/ReviewStep";
-import { StructuralTypeStep } from "../../../../components/requests/wizard/StructuralTypeStep";
 import { ApiError } from "../../../../lib/api-client";
 import { useCreateRequest } from "../../../../lib/hooks/use-requests";
 
 const STEP_TITLES = [
-  "Ubicacion",
+  "Direccion",
   "Tipo de vivienda",
+  "Tus datos",
   "Daños",
   "Fotos",
   "Revisar y enviar",
@@ -31,37 +34,42 @@ export default function NewRequestPage() {
   const createRequest = useCreateRequest();
 
   const [step, setStep] = useState(0);
-  const [location, setLocation] = useState<LocationValue>({
+  const [address, setAddress] = useState<AddressValue>({
+    street: "",
+    city: "",
+    department: "",
     latitude: null,
     longitude: null,
   });
-  const [structuralType, setStructuralType] = useState("");
-  const [floors, setFloors] = useState<number | null>(null);
+  const [housingType, setHousingType] = useState<HousingType | null>(null);
+  const [reporterName, setReporterName] = useState("");
   const [damages, setDamages] = useState<DamagesValue>({
-    grietas_visibles: false,
-    inclinacion: false,
-    colapso_parcial: false,
-    notas: "",
+    selected: [],
+    otros_detalle: "",
+    description: "",
   });
+  const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   const [submitError, setSubmitError] = useState<string>();
 
   const goNext = () => setStep((s) => Math.min(s + 1, STEP_TITLES.length - 1));
   const goBack = () => setStep((s) => Math.max(s - 1, 0));
 
   const handleSubmit = () => {
-    if (location.latitude === null || location.longitude === null) return;
+    if (address.latitude === null || address.longitude === null || !housingType) return;
 
     const input = {
-      location: { latitude: location.latitude, longitude: location.longitude },
-      structural_type: structuralType,
-      floors: floors ?? 0,
+      location: { latitude: address.latitude, longitude: address.longitude },
+      address_text: [address.street, address.city, address.department]
+        .filter(Boolean)
+        .join(", "),
+      reporter_name: reporterName,
+      housing_type: housingType,
       damages_json: {
-        grietas_visibles: damages.grietas_visibles,
-        inclinacion: damages.inclinacion,
-        colapso_parcial: damages.colapso_parcial,
-        notas: damages.notas || undefined,
+        selected: damages.selected,
+        otros_detalle: damages.otros_detalle || undefined,
+        description: damages.description,
       },
-      photo_urls: [],
+      photo_urls: photoUrls,
     };
 
     const validation = createPropertyRequestSchema.safeParse(input);
@@ -99,28 +107,42 @@ export default function NewRequestPage() {
 
       <Card>
         {step === 0 && (
-          <LocationStep value={location} onChange={setLocation} onNext={goNext} />
+          <AddressStep value={address} onChange={setAddress} onNext={goNext} />
         )}
         {step === 1 && (
-          <StructuralTypeStep
-            structuralType={structuralType}
-            floors={floors}
-            onChangeStructuralType={setStructuralType}
-            onChangeFloors={setFloors}
+          <HousingTypeStep
+            value={housingType}
+            onChange={setHousingType}
             onNext={goNext}
             onBack={goBack}
           />
         )}
         {step === 2 && (
+          <ReporterStep
+            value={reporterName}
+            onChange={setReporterName}
+            onNext={goNext}
+            onBack={goBack}
+          />
+        )}
+        {step === 3 && (
           <DamagesStep value={damages} onChange={setDamages} onNext={goNext} onBack={goBack} />
         )}
-        {step === 3 && <PhotosStep onNext={goNext} onBack={goBack} />}
         {step === 4 && (
+          <PhotosStep
+            photoUrls={photoUrls}
+            onChange={setPhotoUrls}
+            onNext={goNext}
+            onBack={goBack}
+          />
+        )}
+        {step === 5 && (
           <ReviewStep
-            location={location}
-            structuralType={structuralType}
-            floors={floors}
+            address={address}
+            reporterName={reporterName}
+            housingType={housingType}
             damages={damages}
+            photoUrls={photoUrls}
             onSubmit={handleSubmit}
             onBack={goBack}
             isSubmitting={createRequest.isPending}

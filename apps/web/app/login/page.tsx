@@ -26,7 +26,12 @@ export default function LoginPage() {
     if (!phoneE164) return;
     verifyOtp.mutate(
       { phone_number: phoneE164, otp_code: code },
-      { onSuccess: () => router.push("/dashboard") },
+      {
+        onSuccess: (data) =>
+          router.push(
+            data.user.role === "VOLUNTEER" ? "/volunteer/map" : "/dashboard",
+          ),
+      },
     );
   };
 

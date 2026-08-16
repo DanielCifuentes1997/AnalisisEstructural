@@ -17,9 +17,11 @@ import { generatePin, hashPin } from "./pin.util";
 
 const CHECKIN_MAX_DISTANCE_METERS = 100;
 
-interface AcceptedRequestRow {
+interface RequestExactLocationRow {
   id: string;
-  structural_type: string;
+  reporter_name: string;
+  address_text: string;
+  housing_type: string;
   damages_json: unknown;
   state: string;
   latitude: number;
@@ -91,8 +93,21 @@ export class VisitsService {
       `[DEV PIN] Codigo de visita para la solicitud ${requestId}: ${pin} (en produccion se envia por SMS al ciudadano)`,
     );
 
-    const rows = await this.prisma.$queryRaw<AcceptedRequestRow[]>`
-      SELECT pr.id, pr.structural_type, pr.damages_json, pr.state,
+    const location = await this.getRequestExactLocation(requestId);
+
+    return { ...location, visit_id: visit.id };
+  }
+
+  async getVisitDetail(userId: string, visitId: string) {
+    const visit = await this.getOwnedVisit(userId, visitId);
+    const location = await this.getRequestExactLocation(visit.request_id);
+
+    return { ...location, visit_id: visit.id };
+  }
+
+  private async getRequestExactLocation(requestId: string) {
+    const rows = await this.prisma.$queryRaw<RequestExactLocationRow[]>`
+      SELECT pr.id, pr.reporter_name, pr.address_text, pr.housing_type, pr.damages_json, pr.state,
              ST_Y(pr.geom::geometry) AS latitude,
              ST_X(pr.geom::geometry) AS longitude,
              u.phone_number AS citizen_phone
@@ -101,7 +116,7 @@ export class VisitsService {
       WHERE pr.id = ${requestId}
     `;
 
-    return { ...rows[0], visit_id: visit.id };
+    return rows[0];
   }
 
   async checkin(userId: string, visitId: string, input: CheckinInput) {

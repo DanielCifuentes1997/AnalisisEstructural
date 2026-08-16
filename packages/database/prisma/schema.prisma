@@ -7,7 +7,7 @@ datasource db {
   provider   = "postgresql"
   url        = env("DATABASE_URL")
   directUrl  = env("DIRECT_URL")
-  extensions = [postgis(version: "3.4")]
+  extensions = [postgis(version: "3.3.7")]
 }
 
 enum Role {
@@ -41,6 +41,24 @@ enum ZoneStatus {
   DANGEROUS
 }
 
+enum HousingType {
+  CASA
+  APARTAMENTO
+}
+
+enum Profession {
+  ARQUITECTO
+  INGENIERO_CIVIL
+  INGENIERO_CIVIL_ESTRUCTURAS
+  INGENIERO_GEOTECNISTA
+  CONSTRUCTOR
+  TECNOLOGO_OBRAS_CIVILES
+  TECNICO_CONSTRUCCION
+  MAESTRO_DE_OBRA
+  ESTUDIANTE_ARQUITECTURA_INGENIERIA_CIVIL
+  OTRO
+}
+
 model Users {
   id                String              @id @default(uuid())
   phone_number      String              @unique
@@ -56,31 +74,35 @@ model Users {
 // Voluntarios de acompañamiento comunitario: sin cruce contra COPNIA/CPNAA,
 // solo cedula + profesion auto-declarada. No emiten dictamenes oficiales.
 model VolunteerProfiles {
-  id                  String   @id @default(uuid())
-  user_id             String   @unique
-  id_document_number  String   @unique
-  declared_profession String
-  is_active           Boolean  @default(true)
-  created_at          DateTime @default(now())
-  updated_at          DateTime @updatedAt
+  id                  String     @id @default(uuid())
+  user_id             String     @unique
+  full_name           String
+  id_document_number  String     @unique
+  declared_profession Profession
+  photo_url           String
+  is_active           Boolean    @default(true)
+  created_at          DateTime   @default(now())
+  updated_at          DateTime   @updatedAt
 
-  user                Users    @relation(fields: [user_id], references: [id])
+  user                Users      @relation(fields: [user_id], references: [id])
   visits              Visits[]
 }
 
 model PropertyRequests {
-  id               String       @id @default(uuid())
-  citizen_id       String
-  geom             Unsupported("geography(Point, 4326)")
-  structural_type  String
-  damages_json     Json
-  priority_score   Int          @default(0)
-  state            RequestState @default(REQUESTED)
-  created_at       DateTime     @default(now())
-  updated_at       DateTime     @updatedAt
+  id              String       @id @default(uuid())
+  citizen_id      String
+  geom            Unsupported("geography(Point, 4326)")
+  reporter_name   String
+  address_text    String
+  housing_type    HousingType
+  damages_json    Json
+  priority_score  Int          @default(0)
+  state           RequestState @default(REQUESTED)
+  created_at      DateTime     @default(now())
+  updated_at      DateTime     @updatedAt
 
-  citizen          Users        @relation(fields: [citizen_id], references: [id])
-  visits           Visits[]
+  citizen         Users        @relation(fields: [citizen_id], references: [id])
+  visits          Visits[]
 }
 
 model Visits {

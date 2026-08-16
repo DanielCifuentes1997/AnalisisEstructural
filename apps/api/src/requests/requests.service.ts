@@ -16,7 +16,9 @@ import { fuzzCoordinates } from "./geo-fuzzing.util";
 interface PropertyRequestRow {
   id: string;
   citizen_id: string;
-  structural_type: string;
+  reporter_name: string;
+  address_text: string;
+  housing_type: string;
   damages_json: unknown;
   priority_score: number;
   state: string;
@@ -28,7 +30,7 @@ interface PropertyRequestRow {
 
 interface HeatmapRow {
   id: string;
-  structural_type: string;
+  housing_type: string;
   state: string;
   created_at: Date;
   latitude: number;
@@ -57,19 +59,21 @@ export class RequestsService {
 
     const rows = await this.prisma.$queryRaw<PropertyRequestRow[]>`
       INSERT INTO "PropertyRequests"
-        (id, citizen_id, geom, structural_type, damages_json, state, created_at, updated_at)
+        (id, citizen_id, geom, reporter_name, address_text, housing_type, damages_json, state, created_at, updated_at)
       VALUES (
         ${id},
         ${citizenId},
         ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326)::geography,
-        ${input.structural_type},
+        ${input.reporter_name},
+        ${input.address_text},
+        ${input.housing_type}::"HousingType",
         ${JSON.stringify(damagesJsonWithPhotos)}::jsonb,
         'REQUESTED',
         now(),
         now()
       )
       RETURNING
-        id, citizen_id, structural_type, damages_json, priority_score, state,
+        id, citizen_id, reporter_name, address_text, housing_type, damages_json, priority_score, state,
         created_at, updated_at,
         ST_Y(geom::geometry) AS latitude,
         ST_X(geom::geometry) AS longitude;
@@ -99,9 +103,27 @@ export class RequestsService {
     });
   }
 
+  // Estados en los que ya existe una visita asignada, por lo tanto es
+  // seguro revelarle al ciudadano quien es el voluntario que la atiende.
+  private static readonly VOLUNTEER_REVEALED_STATES = [
+    "ASSIGNED",
+    "SCHEDULED",
+    "IN_PROGRESS",
+    "VERIFICATION_PENDING",
+    "NOTE_PENDING",
+    "COMPLETED",
+  ];
+
   async findOneForCitizen(citizenId: string, requestId: string) {
     const request = await this.prisma.propertyRequests.findUnique({
       where: { id: requestId },
+      include: {
+        visits: {
+          orderBy: { created_at: "desc" },
+          take: 1,
+          include: { volunteer: { include: { user: true } } },
+        },
+      },
     });
 
     if (!request) {
@@ -112,12 +134,23 @@ export class RequestsService {
       throw new ForbiddenException("Esta solicitud no te pertenece");
     }
 
-    return request;
+    const { visits, ...rest } = request;
+    const visit = visits[0];
+    const assigned_volunteer =
+      visit && RequestsService.VOLUNTEER_REVEALED_STATES.includes(request.state)
+        ? {
+            full_name: visit.volunteer.full_name,
+            photo_url: visit.volunteer.photo_url,
+            phone_number: visit.volunteer.user.phone_number,
+          }
+        : null;
+
+    return { ...rest, assigned_volunteer };
   }
 
   async getHeatmap(bbox: HeatmapQuery["bbox"]) {
     const rows = await this.prisma.$queryRaw<HeatmapRow[]>`
-      SELECT id, structural_type, state, created_at,
+      SELECT id, housing_type, state, created_at,
              ST_Y(geom::geometry) AS latitude,
              ST_X(geom::geometry) AS longitude
       FROM "PropertyRequests"

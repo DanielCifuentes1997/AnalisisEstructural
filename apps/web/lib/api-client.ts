@@ -1,13 +1,20 @@
 import type {
+  CheckinInput,
   CreatePropertyRequestInput,
+  RegisterVolunteerInput,
   RequestOtpInput,
   Role,
+  SignedUploadUrlInput,
+  SubmitVisitNoteInput,
   VerifyOtpInput,
+  VerifyPinInput,
 } from "@proyecto/shared-types";
 import type {
+  HeatmapItem,
   PropertyRequestCreated,
   PropertyRequestDetail,
   PropertyRequestListItem,
+  VisitDetail,
 } from "./types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
@@ -109,4 +116,56 @@ export const apiClient = {
 
   getRequest: (accessToken: string, id: string) =>
     request<PropertyRequestDetail>(`/v1/requests/${id}`, { accessToken }),
+
+  registerVolunteer: (accessToken: string, input: RegisterVolunteerInput) =>
+    request<{ profile: unknown; accessToken: string }>("/v1/volunteers", {
+      method: "POST",
+      accessToken,
+      body: JSON.stringify(input),
+    }),
+
+  getHeatmap: (accessToken: string, bbox: string) =>
+    request<HeatmapItem[]>(
+      `/v1/requests/heatmap?bbox=${encodeURIComponent(bbox)}`,
+      { accessToken },
+    ),
+
+  acceptRequest: (accessToken: string, requestId: string) =>
+    request<VisitDetail>(`/v1/requests/${requestId}/accept`, {
+      method: "POST",
+      accessToken,
+    }),
+
+  getVisit: (accessToken: string, visitId: string) =>
+    request<VisitDetail>(`/v1/visits/${visitId}`, { accessToken }),
+
+  checkinVisit: (accessToken: string, visitId: string, input: CheckinInput) =>
+    request<{ message: string; distance_meters: number }>(
+      `/v1/visits/${visitId}/checkin`,
+      { method: "POST", accessToken, body: JSON.stringify(input) },
+    ),
+
+  verifyVisitPin: (accessToken: string, visitId: string, input: VerifyPinInput) =>
+    request<{ message: string }>(`/v1/visits/${visitId}/verify-pin`, {
+      method: "POST",
+      accessToken,
+      body: JSON.stringify(input),
+    }),
+
+  getSignedUploadUrl: (accessToken: string, input: SignedUploadUrlInput) =>
+    request<{ uploadUrl: string; path: string; publicUrl: string }>(
+      "/v1/uploads/signed-url",
+      { method: "POST", accessToken, body: JSON.stringify(input) },
+    ),
+
+  submitVisitNote: (
+    accessToken: string,
+    visitId: string,
+    input: SubmitVisitNoteInput,
+  ) =>
+    request<unknown>(`/v1/visits/${visitId}/note`, {
+      method: "POST",
+      accessToken,
+      body: JSON.stringify(input),
+    }),
 };

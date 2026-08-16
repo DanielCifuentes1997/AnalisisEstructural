@@ -14,6 +14,7 @@
     "@proyecto/shared-types": "workspace:^",
     "@repo/ui": "workspace:*",
     "@tanstack/react-query": "^5.101.4",
+    "mapbox-gl": "^3.28.1",
     "next": "16.3.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

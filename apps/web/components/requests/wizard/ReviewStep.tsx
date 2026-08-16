@@ -1,14 +1,22 @@
 "use client";
 
+import type { HousingType } from "@proyecto/shared-types";
+import { damageLabel } from "../../../lib/damage-labels";
 import { Button } from "../../ui/Button";
+import type { AddressValue } from "./AddressStep";
 import type { DamagesValue } from "./DamagesStep";
-import type { LocationValue } from "./LocationStep";
+
+const HOUSING_TYPE_LABELS: Record<HousingType, string> = {
+  CASA: "Casa",
+  APARTAMENTO: "Apartamento",
+};
 
 interface ReviewStepProps {
-  location: LocationValue;
-  structuralType: string;
-  floors: number | null;
+  address: AddressValue;
+  reporterName: string;
+  housingType: HousingType | null;
   damages: DamagesValue;
+  photoUrls: string[];
   onSubmit: () => void;
   onBack: () => void;
   isSubmitting: boolean;
@@ -16,10 +24,11 @@ interface ReviewStepProps {
 }
 
 export function ReviewStep({
-  location,
-  structuralType,
-  floors,
+  address,
+  reporterName,
+  housingType,
   damages,
+  photoUrls,
   onSubmit,
   onBack,
   isSubmitting,
@@ -30,32 +39,50 @@ export function ReviewStep({
       <p className="text-sm text-gray-600">Revisa antes de enviar:</p>
 
       <dl className="flex flex-col gap-2 rounded-lg bg-gray-50 p-4 text-sm">
-        <div className="flex justify-between">
-          <dt className="text-gray-500">Ubicacion</dt>
-          <dd className="text-gray-900">
-            {location.latitude?.toFixed(4)}, {location.longitude?.toFixed(4)}
+        <div className="flex justify-between gap-4">
+          <dt className="text-gray-500">Direccion</dt>
+          <dd className="text-right text-gray-900">
+            {[address.street, address.city, address.department].filter(Boolean).join(", ")}
           </dd>
+        </div>
+        <div className="flex justify-between">
+          <dt className="text-gray-500">Nombre</dt>
+          <dd className="text-gray-900">{reporterName}</dd>
         </div>
         <div className="flex justify-between">
           <dt className="text-gray-500">Tipo</dt>
-          <dd className="text-gray-900">{structuralType}</dd>
-        </div>
-        <div className="flex justify-between">
-          <dt className="text-gray-500">Pisos</dt>
-          <dd className="text-gray-900">{floors}</dd>
-        </div>
-        <div className="flex justify-between">
-          <dt className="text-gray-500">Daños reportados</dt>
           <dd className="text-gray-900">
-            {[
-              damages.grietas_visibles && "Grietas",
-              damages.inclinacion && "Inclinacion",
-              damages.colapso_parcial && "Colapso parcial",
-            ]
-              .filter(Boolean)
-              .join(", ") || "Ninguno marcado"}
+            {housingType ? HOUSING_TYPE_LABELS[housingType] : "-"}
           </dd>
         </div>
+        <div className="flex justify-between gap-4">
+          <dt className="text-gray-500">Daños reportados</dt>
+          <dd className="text-right text-gray-900">
+            {damages.selected.length > 0
+              ? damages.selected.map(damageLabel).join(", ")
+              : "Ninguno marcado"}
+          </dd>
+        </div>
+        <div className="flex flex-col gap-1">
+          <dt className="text-gray-500">Descripcion</dt>
+          <dd className="text-gray-900">{damages.description}</dd>
+        </div>
+        {photoUrls.length > 0 && (
+          <div className="flex flex-col gap-1">
+            <dt className="text-gray-500">Fotos ({photoUrls.length})</dt>
+            <dd className="grid grid-cols-4 gap-2">
+              {photoUrls.map((url) => (
+                // eslint-disable-next-line @next/next/no-img-element -- URL remota de Supabase Storage
+                <img
+                  key={url}
+                  src={url}
+                  alt="Foto del daño"
+                  className="h-14 w-full rounded object-cover"
+                />
+              ))}
+            </dd>
+          </div>
+        )}
       </dl>
 
       <p className="text-sm text-gray-500">

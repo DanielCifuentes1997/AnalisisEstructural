@@ -45,8 +45,10 @@ export class VolunteersService {
         this.prisma.volunteerProfiles.create({
           data: {
             user_id: userId,
+            full_name: input.full_name,
             id_document_number: input.id_document_number,
             declared_profession: input.declared_profession,
+            photo_url: input.photo_url,
           },
         }),
         this.prisma.users.update({

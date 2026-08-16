@@ -1,4 +1,12 @@
-import { Body, Controller, Param, ParseUUIDPipe, Post, UseGuards } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  UseGuards,
+} from "@nestjs/common";
 import {
   checkinSchema,
   submitVisitNoteSchema,
@@ -20,6 +28,14 @@ import { VisitsService } from "./visits.service";
 @Roles("VOLUNTEER")
 export class VisitsController {
   constructor(private readonly visitsService: VisitsService) {}
+
+  @Get(":id")
+  getDetail(
+    @CurrentUser() user: AccessTokenPayload,
+    @Param("id", ParseUUIDPipe) id: string,
+  ) {
+    return this.visitsService.getVisitDetail(user.sub, id);
+  }
 
   @Post(":id/checkin")
   checkin(

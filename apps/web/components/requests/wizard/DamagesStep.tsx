@@ -1,12 +1,12 @@
 "use client";
 
+import { DAMAGE_OPTIONS } from "../../../lib/damage-labels";
 import { Button } from "../../ui/Button";
 
 export interface DamagesValue {
-  grietas_visibles: boolean;
-  inclinacion: boolean;
-  colapso_parcial: boolean;
-  notas: string;
+  selected: string[];
+  otros_detalle: string;
+  description: string;
 }
 
 interface DamagesStepProps {
@@ -16,16 +16,20 @@ interface DamagesStepProps {
   onBack: () => void;
 }
 
-const CHECKBOX_OPTIONS: {
-  key: keyof Pick<DamagesValue, "grietas_visibles" | "inclinacion" | "colapso_parcial">;
-  label: string;
-}[] = [
-  { key: "grietas_visibles", label: "Grietas visibles en paredes o columnas" },
-  { key: "inclinacion", label: "Inclinacion severa del piso o paredes" },
-  { key: "colapso_parcial", label: "Colapso parcial de alguna zona" },
-];
+const OTROS_KEY = "otros";
+const CHECKBOX_OPTIONS = DAMAGE_OPTIONS.filter((o) => o.key !== OTROS_KEY);
 
 export function DamagesStep({ value, onChange, onNext, onBack }: DamagesStepProps) {
+  const toggle = (key: string) => {
+    const selected = value.selected.includes(key)
+      ? value.selected.filter((k) => k !== key)
+      : [...value.selected, key];
+    onChange({ ...value, selected });
+  };
+
+  const showOtrosDetalle = value.selected.includes(OTROS_KEY);
+  const canContinue = value.description.trim().length > 0;
+
   return (
     <div className="flex flex-col gap-4">
       <p className="text-sm text-gray-600">
@@ -37,21 +41,40 @@ export function DamagesStep({ value, onChange, onNext, onBack }: DamagesStepProp
           <input
             type="checkbox"
             className="h-6 w-6"
-            checked={value[key]}
-            onChange={(e) => onChange({ ...value, [key]: e.target.checked })}
+            checked={value.selected.includes(key)}
+            onChange={() => toggle(key)}
           />
           <span className="text-base text-gray-900">{label}</span>
         </label>
       ))}
 
+      <label className="flex min-h-12 items-center gap-3">
+        <input
+          type="checkbox"
+          className="h-6 w-6"
+          checked={showOtrosDetalle}
+          onChange={() => toggle(OTROS_KEY)}
+        />
+        <span className="text-base text-gray-900">Otros</span>
+      </label>
+
+      {showOtrosDetalle && (
+        <textarea
+          className="min-h-16 rounded-lg border border-gray-300 px-4 py-3 text-base"
+          placeholder="Cuentanos que mas notas"
+          value={value.otros_detalle}
+          onChange={(e) => onChange({ ...value, otros_detalle: e.target.value })}
+        />
+      )}
+
       <div className="flex flex-col gap-1">
         <label className="text-sm font-medium text-gray-700">
-          Otros detalles (opcional)
+          Describe el problema con tus palabras
         </label>
         <textarea
           className="min-h-24 rounded-lg border border-gray-300 px-4 py-3 text-base"
-          value={value.notas}
-          onChange={(e) => onChange({ ...value, notas: e.target.value })}
+          value={value.description}
+          onChange={(e) => onChange({ ...value, description: e.target.value })}
         />
       </div>
 
@@ -59,7 +82,7 @@ export function DamagesStep({ value, onChange, onNext, onBack }: DamagesStepProp
         <Button type="button" variant="secondary" onClick={onBack}>
           Atras
         </Button>
-        <Button type="button" onClick={onNext}>
+        <Button type="button" onClick={onNext} disabled={!canContinue}>
           Continuar
         </Button>
       </div>

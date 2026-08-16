@@ -5,6 +5,7 @@ import { AuthModule } from "./auth/auth.module";
 import { HealthController } from "./health/health.controller";
 import { PrismaModule } from "./prisma/prisma.module";
 import { RequestsModule } from "./requests/requests.module";
+import { StorageModule } from "./storage/storage.module";
 import { VolunteersModule } from "./volunteers/volunteers.module";
 import { WorkflowModule } from "./workflow/workflow.module";
 
@@ -18,6 +19,7 @@ import { WorkflowModule } from "./workflow/workflow.module";
     WorkflowModule,
     RequestsModule,
     VolunteersModule,
+    StorageModule,
   ],
   controllers: [HealthController],
   providers: [

@@ -24,7 +24,12 @@ export default function DashboardPage() {
       </div>
 
       <Link href="/requests/new">
-        <Button className="mb-6 w-full">Reportar una vivienda</Button>
+        <Button className="mb-3 w-full">Reportar una vivienda</Button>
+      </Link>
+      <Link href="/volunteer/register">
+        <Button variant="secondary" className="mb-6 w-full">
+          ¿Tienes criterio tecnico? Registrate como voluntario
+        </Button>
       </Link>
 
       {isLoading && <Spinner label="Cargando tus solicitudes..." />}

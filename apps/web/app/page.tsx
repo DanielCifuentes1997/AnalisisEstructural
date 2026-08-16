@@ -10,11 +10,16 @@ export default function RootPage() {
   const router = useRouter();
   const hasMounted = useHasMounted();
   const accessToken = useAuthStore((state) => state.accessToken);
+  const role = useAuthStore((state) => state.user?.role);
 
   useEffect(() => {
     if (!hasMounted) return;
-    router.replace(accessToken ? "/dashboard" : "/login");
-  }, [hasMounted, accessToken, router]);
+    if (!accessToken) {
+      router.replace("/login");
+      return;
+    }
+    router.replace(role === "VOLUNTEER" ? "/volunteer/map" : "/dashboard");
+  }, [hasMounted, accessToken, role, router]);
 
   return <Spinner />;
 }
