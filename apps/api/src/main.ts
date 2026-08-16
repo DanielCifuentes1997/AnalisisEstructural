@@ -17,6 +17,12 @@ async function bootstrap() {
   assertRequiredEnv();
 
   const app = await NestFactory.create(AppModule);
+
+  app.enableCors({
+    origin: (process.env.CORS_ORIGIN ?? "http://localhost:3000").split(","),
+    credentials: true,
+  });
+
   const port = process.env.PORT ?? 4000;
 
   await app.listen(port);
