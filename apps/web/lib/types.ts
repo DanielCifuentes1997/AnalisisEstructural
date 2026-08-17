@@ -1,7 +1,10 @@
 import type {
   Damages,
   HousingType,
+  Profession,
   RequestState,
+  UserStatus,
+  VerificationStatus,
   ZoneStatus,
 } from "@proyecto/shared-types";
 
@@ -16,6 +19,67 @@ export interface AssignedVolunteer {
   full_name: string;
   photo_url: string;
   phone_number: string;
+  // Solo indica si el admin ya reviso su matricula; el numero en si
+  // nunca sale del panel de administracion.
+  is_verified: boolean;
+}
+
+// ---------- Panel de administracion (@Roles("ADMIN")) ----------
+
+export interface AdminMetrics {
+  requests_by_state: Partial<Record<RequestState, number>>;
+  requests_total: number;
+  volunteers_by_verification: Partial<Record<VerificationStatus, number>>;
+  volunteers_active: number;
+  users_total: number;
+  users_suspended: number;
+}
+
+// Unica respuesta del sistema que expone matricula y cedula: existe
+// para que el admin las verifique a mano.
+export interface AdminVolunteer {
+  id: string;
+  user_id: string;
+  full_name: string;
+  id_document_number: string;
+  declared_profession: Profession;
+  professional_license: string | null;
+  photo_url: string;
+  phone_number: string;
+  user_status: UserStatus;
+  is_active: boolean;
+  verification_status: VerificationStatus;
+  verified_at: string | null;
+  review_notes: string | null;
+  visits_count: number;
+  created_at: string;
+}
+
+export interface AdminRequest {
+  id: string;
+  reporter_name: string;
+  address_text: string;
+  address_complement: string | null;
+  housing_type: HousingType;
+  state: RequestState;
+  created_at: string;
+  updated_at: string;
+  citizen_phone: string;
+  assigned_volunteer_name: string | null;
+  hours_since_update: number;
+  is_stuck_candidate: boolean;
+}
+
+export interface AdminAuditLog {
+  id: string;
+  timestamp: string;
+  actor_id: string;
+  actor_phone: string | null;
+  action: string;
+  resource_id: string;
+  prior_state: string | null;
+  new_state: string | null;
+  notes: string | null;
 }
 
 // No existen en @proyecto/shared-types: solo hay schema del body del

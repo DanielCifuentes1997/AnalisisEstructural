@@ -12,6 +12,15 @@ export type Role = z.infer<typeof roleSchema>;
 export const userStatusSchema = z.enum(["ACTIVE", "SUSPENDED"]);
 export type UserStatus = z.infer<typeof userStatusSchema>;
 
+// Revision manual del admin sobre un analista. PENDING no le impide
+// operar: solo significa que todavia nadie miro su matricula.
+export const verificationStatusSchema = z.enum([
+  "PENDING",
+  "VERIFIED",
+  "REJECTED",
+]);
+export type VerificationStatus = z.infer<typeof verificationStatusSchema>;
+
 export const requestStateSchema = z.enum([
   "REQUESTED",
   "WAITING_VOLUNTEER",

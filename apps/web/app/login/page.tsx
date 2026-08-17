@@ -33,6 +33,10 @@ function LoginContent() {
       { phone_number: phoneE164, otp_code: code },
       {
         onSuccess: (data) => {
+          if (data.user.role === "ADMIN") {
+            router.push("/admin");
+            return;
+          }
           if (data.user.role === "VOLUNTEER") {
             router.push("/volunteer");
             return;

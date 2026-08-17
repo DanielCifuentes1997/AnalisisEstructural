@@ -147,6 +147,9 @@ export class RequestsService {
             full_name: visit.volunteer.full_name,
             photo_url: visit.volunteer.photo_url,
             phone_number: visit.volunteer.user.phone_number,
+            // Solo el hecho de estar verificado. La matricula y la cedula
+            // son datos internos del admin y nunca salen por aqui.
+            is_verified: visit.volunteer.verification_status === "VERIFIED",
           }
         : null;
 

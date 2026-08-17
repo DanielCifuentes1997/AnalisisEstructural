@@ -2,14 +2,17 @@ import {
   ForbiddenException,
   Inject,
   Injectable,
+  Logger,
   UnauthorizedException,
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
+import type { Users } from "@proyecto/database";
 import type {
   RefreshTokenInput,
   RequestOtpInput,
   VerifyOtpInput,
 } from "@proyecto/shared-types";
+import { AuditService } from "../audit/audit.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { OTP_PROVIDER, type OtpProvider } from "./otp/otp-provider.interface";
 import type {
@@ -25,14 +28,52 @@ const REFRESH_TOKEN_TTL = "30d";
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     @Inject(OTP_PROVIDER) private readonly otpProvider: OtpProvider,
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
+    private readonly audit: AuditService,
   ) {}
 
   async requestOtp(input: RequestOtpInput): Promise<void> {
     await this.otpProvider.sendOtp(input.phone_number);
+  }
+
+  /**
+   * ADMIN_PHONES resuelve el problema del huevo y la gallina: sin esto
+   * nadie podria ser el primer administrador. Es una puerta permanente,
+   * asi que cada promocion queda escrita en la bitacora para que se
+   * pueda auditar quien entro por ahi y cuando.
+   */
+  private async promoteIfConfiguredAdmin(user: Users): Promise<Users> {
+    const configured = (process.env.ADMIN_PHONES ?? "")
+      .split(",")
+      .map((phone) => phone.trim())
+      .filter(Boolean);
+
+    if (!configured.includes(user.phone_number) || user.role === "ADMIN") {
+      return user;
+    }
+
+    const promoted = await this.prisma.users.update({
+      where: { id: user.id },
+      data: { role: "ADMIN" },
+    });
+
+    await this.audit.record({
+      actorId: user.id,
+      action: "ADMIN_PROMOTED",
+      resourceId: user.id,
+      priorState: user.role,
+      newState: "ADMIN",
+    });
+    this.logger.warn(
+      `Usuario ${user.id} promovido a ADMIN por estar en ADMIN_PHONES`,
+    );
+
+    return promoted;
   }
 
   async verifyOtp(input: VerifyOtpInput) {
@@ -45,15 +86,17 @@ export class AuthService {
       throw new UnauthorizedException("Codigo OTP invalido o expirado");
     }
 
-    const user = await this.prisma.users.upsert({
+    const upserted = await this.prisma.users.upsert({
       where: { phone_number: input.phone_number },
       update: {},
       create: { phone_number: input.phone_number },
     });
 
-    if (user.status === "SUSPENDED") {
+    if (upserted.status === "SUSPENDED") {
       throw new ForbiddenException("Esta cuenta ha sido suspendida");
     }
+
+    const user = await this.promoteIfConfiguredAdmin(upserted);
 
     const accessPayload: AccessTokenPayload = { sub: user.id, role: user.role };
     const refreshPayload: RefreshTokenPayload = {

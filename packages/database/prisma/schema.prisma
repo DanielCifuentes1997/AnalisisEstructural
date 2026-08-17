@@ -22,6 +22,17 @@ enum UserStatus {
   SUSPENDED
 }
 
+// Estado de la revision manual del admin. PENDING no bloquea: el
+// analista puede operar desde que se registra (decision de producto:
+// tras un sismo la velocidad importa mas que el tramite). Lo que cambia
+// es que el ciudadano solo ve el distintivo "Verificado" si el admin ya
+// reviso la matricula.
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
 enum RequestState {
   REQUESTED
   WAITING_VOLUNTEER
@@ -86,6 +97,12 @@ model VolunteerProfiles {
   professional_license String?
   photo_url           String
   is_active           Boolean    @default(true)
+  verification_status VerificationStatus @default(PENDING)
+  verified_at         DateTime?
+  // Usuario admin que hizo la revision, y por que se rechazo. Ambos son
+  // datos internos: al ciudadano solo le llega si esta verificado o no.
+  reviewed_by         String?
+  review_notes        String?
   created_at          DateTime   @default(now())
   updated_at          DateTime   @updatedAt
 
@@ -163,5 +180,11 @@ model AuditLogs {
   resource_id String
   prior_state String?
   new_state   String?
+  // Motivo que escribio el admin al actuar. Sin esto, una suspension o
+  // un rechazo quedan sin contexto para quien revise despues.
+  notes       String?
   ip_address  String?
+
+  @@index([timestamp(sort: Desc)])
+  @@index([actor_id])
 }

@@ -18,7 +18,13 @@ export default function RootPage() {
   // corresponde al rol.
   useEffect(() => {
     if (!hasMounted || !accessToken) return;
-    router.replace(role === "VOLUNTEER" ? "/volunteer" : "/dashboard");
+    router.replace(
+      role === "ADMIN"
+        ? "/admin"
+        : role === "VOLUNTEER"
+          ? "/volunteer"
+          : "/dashboard",
+    );
   }, [hasMounted, accessToken, role, router]);
 
   if (!hasMounted || accessToken) {

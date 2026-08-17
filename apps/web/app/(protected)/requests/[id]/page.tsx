@@ -104,9 +104,19 @@ export default function RequestDetailPage() {
                     className="h-16 w-16 rounded-full border border-sand-200 object-cover"
                   />
                   <div>
-                    <p className="text-lg font-semibold text-sand-900">
-                      {request.assigned_volunteer.full_name}
-                    </p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-lg font-semibold text-sand-900">
+                        {request.assigned_volunteer.full_name}
+                      </p>
+                      {request.assigned_volunteer.is_verified && (
+                        <span
+                          className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-800"
+                          title="Revisamos su matricula profesional"
+                        >
+                          ✓ Verificado
+                        </span>
+                      )}
+                    </div>
                     <a
                       href={`tel:${request.assigned_volunteer.phone_number}`}
                       className="text-sm font-medium text-brand-700 underline"

@@ -1,15 +1,24 @@
 import type {
+  AdminRequestActionInput,
+  AdminRequestsQuery,
+  AdminVolunteersQuery,
   CheckinInput,
   CreatePropertyRequestInput,
   RegisterVolunteerInput,
   RequestOtpInput,
+  ReviewVolunteerInput,
   Role,
   SignedUploadUrlInput,
   SubmitVisitNoteInput,
+  UpdateUserStatusInput,
   VerifyOtpInput,
   VerifyPinInput,
 } from "@proyecto/shared-types";
 import type {
+  AdminAuditLog,
+  AdminMetrics,
+  AdminRequest,
+  AdminVolunteer,
   HeatmapItem,
   PropertyRequestCreated,
   PropertyRequestDetail,
@@ -234,6 +243,69 @@ export const apiClient = {
       "/v1/uploads/signed-url",
       { method: "POST", accessToken, body: JSON.stringify(input) },
     ),
+
+  // ---------- Panel de administracion ----------
+
+  getAdminMetrics: (accessToken: string) =>
+    request<AdminMetrics>("/v1/admin/metrics", { accessToken }),
+
+  listAdminVolunteers: (accessToken: string, query: AdminVolunteersQuery = {}) =>
+    request<AdminVolunteer[]>(
+      `/v1/admin/volunteers${query.verification_status ? `?verification_status=${query.verification_status}` : ""}`,
+      { accessToken },
+    ),
+
+  reviewVolunteer: (
+    accessToken: string,
+    volunteerId: string,
+    input: ReviewVolunteerInput,
+  ) =>
+    request<AdminVolunteer>(`/v1/admin/volunteers/${volunteerId}`, {
+      method: "PATCH",
+      accessToken,
+      body: JSON.stringify(input),
+    }),
+
+  listAdminRequests: (accessToken: string, query: AdminRequestsQuery = {}) =>
+    request<AdminRequest[]>(
+      `/v1/admin/requests${query.state ? `?state=${query.state}` : ""}`,
+      { accessToken },
+    ),
+
+  returnRequestToPool: (
+    accessToken: string,
+    requestId: string,
+    input: AdminRequestActionInput = {},
+  ) =>
+    request<unknown>(`/v1/admin/requests/${requestId}/return-to-pool`, {
+      method: "POST",
+      accessToken,
+      body: JSON.stringify(input),
+    }),
+
+  adminCancelRequest: (
+    accessToken: string,
+    requestId: string,
+    input: AdminRequestActionInput = {},
+  ) =>
+    request<unknown>(`/v1/admin/requests/${requestId}/cancel`, {
+      method: "POST",
+      accessToken,
+      body: JSON.stringify(input),
+    }),
+
+  updateUserStatus: (
+    accessToken: string,
+    userId: string,
+    input: UpdateUserStatusInput,
+  ) =>
+    request<{ id: string; status: string }>(
+      `/v1/admin/users/${userId}/status`,
+      { method: "PATCH", accessToken, body: JSON.stringify(input) },
+    ),
+
+  listAuditLogs: (accessToken: string) =>
+    request<AdminAuditLog[]>("/v1/admin/audit-logs", { accessToken }),
 
   submitVisitNote: (
     accessToken: string,
