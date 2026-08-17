@@ -6,8 +6,15 @@ import { ApiError } from "../../lib/api-client";
 import { useConversation, useSendMessage } from "../../lib/hooks/use-chat";
 import { Button } from "../ui/Button";
 import { Spinner } from "../ui/Spinner";
+import { ReportAnalystDialog } from "./ReportAnalystDialog";
 
-export function ChatPanel({ visitId }: { visitId: string }) {
+interface ChatPanelProps {
+  visitId: string;
+  // Solo el ciudadano puede reportar: es quien abre su casa.
+  canReport?: boolean;
+}
+
+export function ChatPanel({ visitId, canReport = false }: ChatPanelProps) {
   const { data: conversation, isLoading, isError } = useConversation(visitId);
   const sendMessage = useSendMessage(visitId);
   const [draft, setDraft] = useState("");
@@ -97,6 +104,13 @@ export function ChatPanel({ visitId }: { visitId: string }) {
         ))}
         <div ref={bottomRef} />
       </div>
+
+      {canReport && (
+        <ReportAnalystDialog
+          visitId={visitId}
+          analystName={conversation.counterpart.name}
+        />
+      )}
 
       {conversation.is_closed ? (
         <p className="border-t border-sand-200 px-4 py-3 text-sm text-sand-500">

@@ -58,3 +58,36 @@ export const acceptDataPolicySchema = z.object({
   version: z.string().min(1),
 });
 export type AcceptDataPolicyInput = z.infer<typeof acceptDataPolicySchema>;
+
+// Denuncia sobre el COMPORTAMIENTO del analista. Deliberadamente no
+// menciona la vivienda: el ciudadano no debe confundir esto con
+// reportar los daños de su casa.
+export const abuseReasonSchema = z.enum([
+  "PIDIO_DINERO",
+  "PIDIO_DATOS_PERSONALES",
+  "TRATO_IRRESPETUOSO",
+  "NO_LLEGO",
+  "SOSPECHOSO",
+  "OTRO",
+]);
+export type AbuseReason = z.infer<typeof abuseReasonSchema>;
+
+export const ABUSE_REASON_LABELS: Record<AbuseReason, string> = {
+  PIDIO_DINERO: "Me pidió dinero o algún pago",
+  PIDIO_DATOS_PERSONALES: "Me pidió datos personales o bancarios",
+  TRATO_IRRESPETUOSO: "Me trató de forma irrespetuosa",
+  NO_LLEGO: "Quedó de venir y nunca llegó",
+  SOSPECHOSO: "Creo que no es quien dice ser",
+  OTRO: "Otra cosa",
+};
+
+export const reportAbuseSchema = z
+  .object({
+    reason: abuseReasonSchema,
+    details: z.string().trim().max(1000).optional(),
+  })
+  .refine(
+    (value) => value.reason !== "OTRO" || Boolean(value.details?.trim()),
+    { path: ["details"], message: "Cuéntanos qué pasó" },
+  );
+export type ReportAbuseInput = z.infer<typeof reportAbuseSchema>;

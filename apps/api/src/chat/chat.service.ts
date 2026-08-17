@@ -3,7 +3,10 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import type { SendMessageInput } from "@proyecto/shared-types";
+import type {
+  ReportAbuseInput,
+  SendMessageInput,
+} from "@proyecto/shared-types";
 import { PrismaService } from "../prisma/prisma.service";
 
 // Estados en los que ya no tiene sentido seguir escribiendo.
@@ -146,6 +149,29 @@ export class ChatService {
       total: grouped.reduce((sum, g) => sum + g._count._all, 0),
       by_visit: byVisit,
     };
+  }
+
+  /**
+   * Denuncia del ciudadano sobre el comportamiento del analista. Solo la
+   * puede poner el ciudadano: el analista no ve datos suyos que pueda
+   * usar en su contra, y quien esta expuesto en su casa es el.
+   */
+  async reportAbuse(userId: string, visitId: string, input: ReportAbuseInput) {
+    const { isCitizen } = await this.getParticipantContext(userId, visitId);
+    if (!isCitizen) {
+      throw new ForbiddenException(
+        "Solo quien recibe la visita puede reportar al analista",
+      );
+    }
+
+    return this.prisma.abuseReports.create({
+      data: {
+        visit_id: visitId,
+        reporter_id: userId,
+        reason: input.reason,
+        details: input.details?.trim() || null,
+      },
+    });
   }
 
   // Lectura para moderacion: el admin ve la conversacion completa, con

@@ -72,6 +72,21 @@ export class AdminController {
     return this.adminService.createNotice(user.sub, id, body);
   }
 
+  @Get("reports")
+  listReports() {
+    return this.adminService.listAbuseReports();
+  }
+
+  // Marca la denuncia como revisada. Sin cuerpo: la accion es unica y el
+  // id va en la ruta.
+  @Patch("reports/:id/review")
+  reviewReport(
+    @CurrentUser() user: AccessTokenPayload,
+    @Param("id", ParseUUIDPipe) id: string,
+  ) {
+    return this.adminService.reviewAbuseReport(user.sub, id);
+  }
+
   @Get("conversations")
   listConversations() {
     return this.adminService.listConversations();

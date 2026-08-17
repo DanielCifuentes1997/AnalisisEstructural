@@ -8,6 +8,7 @@ import type {
   CreatePropertyRequestInput,
   RegisterVolunteerInput,
   ReleaseVisitInput,
+  ReportAbuseInput,
   RequestOtpInput,
   ReviewVolunteerInput,
   SendMessageInput,
@@ -20,6 +21,7 @@ import type {
   VerifyPinInput,
 } from "@proyecto/shared-types";
 import type {
+  AdminAbuseReport,
   AdminAuditLog,
   AdminConversation,
   AdminConversationSummary,
@@ -277,6 +279,13 @@ export const apiClient = {
       body: JSON.stringify(input),
     }),
 
+  reportAbuse: (accessToken: string, visitId: string, input: ReportAbuseInput) =>
+    request<unknown>(`/v1/visits/${visitId}/report`, {
+      method: "POST",
+      accessToken,
+      body: JSON.stringify(input),
+    }),
+
   // ---------- Perfil del analista ----------
 
   getMyVolunteerProfile: (accessToken: string) =>
@@ -315,6 +324,15 @@ export const apiClient = {
       method: "POST",
       accessToken,
       body: JSON.stringify(input),
+    }),
+
+  listAbuseReports: (accessToken: string) =>
+    request<AdminAbuseReport[]>("/v1/admin/reports", { accessToken }),
+
+  reviewAbuseReport: (accessToken: string, reportId: string) =>
+    request<unknown>(`/v1/admin/reports/${reportId}/review`, {
+      method: "PATCH",
+      accessToken,
     }),
 
   listAdminConversations: (accessToken: string) =>

@@ -175,6 +175,19 @@ function VolunteerCard({ volunteer }: { volunteer: AdminVolunteer }) {
                 Cuenta suspendida
               </span>
             )}
+            {volunteer.is_underperforming && (
+              <span
+                className="rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-800"
+                title="Se le rescataron mas casos de los que completo"
+              >
+                ⚠ No está cumpliendo
+              </span>
+            )}
+            {volunteer.abuse_reports_count > 0 && (
+              <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-800">
+                {volunteer.abuse_reports_count} denuncia(s)
+              </span>
+            )}
             {volunteer.pending_notices_count > 0 && (
               <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
                 {volunteer.pending_notices_count} aviso(s) sin atender
@@ -198,7 +211,6 @@ function VolunteerCard({ volunteer }: { volunteer: AdminVolunteer }) {
           }
           highlight={needsLicense}
         />
-        <Field label="Visitas realizadas" value={String(volunteer.visits_count)} />
         <Field
           label="Casos abiertos ahora"
           value={`${volunteer.active_visits_count} de ${MAX_ACTIVE_VISITS}`}
@@ -215,6 +227,30 @@ function VolunteerCard({ volunteer }: { volunteer: AdminVolunteer }) {
           />
         )}
       </dl>
+
+      <div className="mt-4 rounded-xl bg-sand-50 p-3">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-sand-500">
+          Cumplimiento
+        </p>
+        <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
+          <Metric label="Aceptadas" value={volunteer.visits_count} />
+          <Metric label="Completadas" value={volunteer.completed_count} tone="good" />
+          <Metric
+            label="Liberó él"
+            value={volunteer.released_by_self_count}
+          />
+          <Metric
+            label="Tuviste que rescatar"
+            value={volunteer.released_by_admin_count}
+            tone={volunteer.released_by_admin_count > 0 ? "bad" : "normal"}
+          />
+        </div>
+        <p className="mt-2 text-xs text-sand-500">
+          {volunteer.completion_rate === null
+            ? "Aún no ha cerrado suficientes casos para calcular un porcentaje."
+            : `Completa el ${volunteer.completion_rate}% de los casos que cierra.`}
+        </p>
+      </div>
 
       {volunteer.review_notes && (
         <p className="mt-3 rounded-xl bg-sand-100 p-3 text-sm text-sand-700">
@@ -337,6 +373,33 @@ function VolunteerCard({ volunteer }: { volunteer: AdminVolunteer }) {
         </div>
       )}
     </Card>
+  );
+}
+
+function Metric({
+  label,
+  value,
+  tone = "normal",
+}: {
+  label: string;
+  value: number;
+  tone?: "normal" | "good" | "bad";
+}) {
+  return (
+    <div>
+      <p
+        className={`text-xl font-semibold ${
+          tone === "good"
+            ? "text-emerald-700"
+            : tone === "bad"
+              ? "text-red-700"
+              : "text-sand-900"
+        }`}
+      >
+        {value}
+      </p>
+      <p className="text-xs text-sand-500">{label}</p>
+    </div>
   );
 }
 

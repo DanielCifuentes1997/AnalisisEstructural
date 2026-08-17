@@ -8,7 +8,9 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import {
+  reportAbuseSchema,
   sendMessageSchema,
+  type ReportAbuseInput,
   type SendMessageInput,
 } from "@proyecto/shared-types";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
@@ -35,6 +37,15 @@ export class ChatController {
     @Param("id", ParseUUIDPipe) id: string,
   ) {
     return this.chatService.getConversation(user.sub, id);
+  }
+
+  @Post("visits/:id/report")
+  report(
+    @CurrentUser() user: AccessTokenPayload,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(reportAbuseSchema)) body: ReportAbuseInput,
+  ) {
+    return this.chatService.reportAbuse(user.sub, id, body);
   }
 
   @Post("visits/:id/messages")

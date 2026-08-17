@@ -23,6 +23,7 @@ export const auditActionSchema = z.enum([
   "VISIT_RELEASED_BY_ADMIN",
   "ADMIN_NOTICE_SENT",
   "VOLUNTEER_PROFILE_UPDATED",
+  "ABUSE_REPORT_REVIEWED",
 ]);
 export type AuditAction = z.infer<typeof auditActionSchema>;
 

@@ -5,5 +5,6 @@ export const ADMIN_NAV: NavItem[] = [
   { href: "/admin/analistas", label: "Analistas" },
   { href: "/admin/solicitudes", label: "Solicitudes" },
   { href: "/admin/conversaciones", label: "Chats" },
+  { href: "/admin/denuncias", label: "Denuncias" },
   { href: "/admin/bitacora", label: "Bitácora" },
 ];

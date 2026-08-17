@@ -130,7 +130,7 @@ export default function RequestDetailPage() {
             )}
 
             {request.active_visit_id && (
-              <ChatPanel visitId={request.active_visit_id} />
+              <ChatPanel visitId={request.active_visit_id} canReport />
             )}
 
             {request.visit_note && (

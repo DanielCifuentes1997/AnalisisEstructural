@@ -1,4 +1,5 @@
 import type {
+  AbuseReason,
   Damages,
   HousingType,
   Profession,
@@ -54,8 +55,29 @@ export interface AdminVolunteer {
   review_notes: string | null;
   visits_count: number;
   active_visits_count: number;
+  completed_count: number;
+  released_by_self_count: number;
+  released_by_admin_count: number;
+  // null cuando todavia hay menos de 3 casos cerrados: el porcentaje
+  // no diria nada con tan poca muestra.
+  completion_rate: number | null;
+  is_underperforming: boolean;
   pending_notices_count: number;
+  abuse_reports_count: number;
   created_at: string;
+}
+
+export interface AdminAbuseReport {
+  id: string;
+  visit_id: string;
+  reason: AbuseReason;
+  details: string | null;
+  created_at: string;
+  reviewed_at: string | null;
+  volunteer_id: string;
+  volunteer_name: string;
+  citizen_name: string;
+  request_state: RequestState;
 }
 
 export interface AdminRequest {

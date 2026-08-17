@@ -46,6 +46,15 @@ enum RequestState {
   REASSIGNMENT_REQUIRED
 }
 
+enum AbuseReason {
+  PIDIO_DINERO
+  PIDIO_DATOS_PERSONALES
+  TRATO_IRRESPETUOSO
+  NO_LLEGO
+  SOSPECHOSO
+  OTRO
+}
+
 enum ZoneStatus {
   SAFE
   CAUTION
@@ -152,13 +161,35 @@ model Visits {
 
   // Se marca cuando el caso se libera (por el analista o por el admin):
   // la visita queda como historial, pero deja de contar para el limite
-  // de casos activos y su chat se cierra.
+  // de casos activos y su chat se cierra. Quien lo libero importa: que
+  // el analista suelte un caso es responsable; que el admin tenga que
+  // rescatarlo es una señal de que no cumplio.
   released_at      DateTime?
+  released_by_role Role?
 
   request          PropertyRequests  @relation(fields: [request_id], references: [id])
   volunteer        VolunteerProfiles @relation(fields: [volunteer_id], references: [id])
   visit_note       VisitNotes?
   messages         Messages[]
+  abuse_reports    AbuseReports[]
+}
+
+// Denuncia del ciudadano sobre el comportamiento del analista (dinero,
+// datos, trato, no llego). NO tiene nada que ver con los daños de la
+// vivienda: es moderacion de personas.
+model AbuseReports {
+  id          String   @id @default(uuid())
+  visit_id    String
+  reporter_id String
+  reason      AbuseReason
+  details     String?
+  reviewed_at DateTime?
+  reviewed_by String?
+  created_at  DateTime @default(now())
+
+  visit       Visits   @relation(fields: [visit_id], references: [id])
+
+  @@index([created_at(sort: Desc)])
 }
 
 // Chat entre el ciudadano y el analista asignado. Existe para que puedan

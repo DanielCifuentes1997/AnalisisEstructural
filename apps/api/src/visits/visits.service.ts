@@ -186,7 +186,7 @@ export class VisitsService {
     await this.prisma.$transaction([
       this.prisma.visits.update({
         where: { id: visitId },
-        data: { released_at: new Date() },
+        data: { released_at: new Date(), released_by_role: "VOLUNTEER" },
       }),
       this.prisma.propertyRequests.update({
         where: { id: visit.request_id },

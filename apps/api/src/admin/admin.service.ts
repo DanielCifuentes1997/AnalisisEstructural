@@ -12,6 +12,54 @@ import { ChatService } from "../chat/chat.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { RequestStateMachine } from "../workflow/request-state-machine.service";
 
+interface VisitPerformanceRow {
+  released_at: Date | null;
+  released_by_role: string | null;
+  request: { state: string };
+}
+
+const CLOSED_REQUEST_STATES = ["COMPLETED", "CANCELLED"];
+
+/**
+ * Traduce el historial de visitas en las cifras que delatan a un
+ * analista que no cumple. La distincion clave es quien libero: soltar un
+ * caso a tiempo es responsable; que el admin haya tenido que rescatarlo
+ * es la señal de abandono.
+ */
+function buildPerformance(visits: VisitPerformanceRow[]) {
+  const accepted = visits.length;
+  const completed = visits.filter(
+    (v) => v.request.state === "COMPLETED",
+  ).length;
+  const releasedBySelf = visits.filter(
+    (v) => v.released_at && v.released_by_role === "VOLUNTEER",
+  ).length;
+  const releasedByAdmin = visits.filter(
+    (v) => v.released_at && v.released_by_role === "ADMIN",
+  ).length;
+  const active = visits.filter(
+    (v) => !v.released_at && !CLOSED_REQUEST_STATES.includes(v.request.state),
+  ).length;
+
+  const closed = completed + releasedBySelf + releasedByAdmin;
+  // Con menos de 3 casos cerrados el porcentaje no dice nada todavia.
+  const completionRate =
+    closed >= 3 ? Math.round((completed / closed) * 100) : null;
+
+  return {
+    visits_count: accepted,
+    active_visits_count: active,
+    completed_count: completed,
+    released_by_self_count: releasedBySelf,
+    released_by_admin_count: releasedByAdmin,
+    completion_rate: completionRate,
+    // Bandera para el admin: acepto varios, el admin tuvo que rescatar
+    // la mayoria, y practicamente no completo ninguno.
+    is_underperforming:
+      closed >= 3 && releasedByAdmin > completed,
+  };
+}
+
 // Una solicitud en estos estados ya tiene analista asignado; si el
 // analista desaparece, es aqui donde queda trabada para siempre sin
 // intervencion del admin.
@@ -57,7 +105,7 @@ export class AdminService {
       await this.prisma.$transaction([
         this.prisma.visits.update({
           where: { id: visit.id },
-          data: { released_at: new Date() },
+          data: { released_at: new Date(), released_by_role: "ADMIN" },
         }),
         this.prisma.propertyRequests.update({
           where: { id: visit.request_id },
@@ -101,6 +149,54 @@ export class AdminService {
     });
 
     return notice;
+  }
+
+  async listAbuseReports() {
+    const reports = await this.prisma.abuseReports.findMany({
+      orderBy: [{ reviewed_at: "asc" }, { created_at: "desc" }],
+      take: 100,
+      include: {
+        visit: { include: { volunteer: true, request: true } },
+      },
+    });
+
+    return reports.map((r) => ({
+      id: r.id,
+      visit_id: r.visit_id,
+      reason: r.reason,
+      details: r.details,
+      created_at: r.created_at,
+      reviewed_at: r.reviewed_at,
+      volunteer_id: r.visit.volunteer.id,
+      volunteer_name: r.visit.volunteer.full_name,
+      citizen_name: r.visit.request.reporter_name,
+      request_state: r.visit.request.state,
+    }));
+  }
+
+  // El body solo lleva { reviewed: true }: no aporta datos, sirve para
+  // que la intencion sea explicita en la peticion.
+  async reviewAbuseReport(adminId: string, reportId: string) {
+    const report = await this.prisma.abuseReports.findUnique({
+      where: { id: reportId },
+    });
+    if (!report) {
+      throw new NotFoundException("Denuncia no encontrada");
+    }
+
+    const updated = await this.prisma.abuseReports.update({
+      where: { id: reportId },
+      data: { reviewed_at: new Date(), reviewed_by: adminId },
+    });
+
+    await this.audit.record({
+      actorId: adminId,
+      action: "ABUSE_REPORT_REVIEWED",
+      resourceId: reportId,
+      notes: report.reason,
+    });
+
+    return updated;
   }
 
   getConversation(visitId: string) {
@@ -174,11 +270,13 @@ export class AdminService {
         user: true,
         _count: { select: { visits: true } },
         visits: {
-          where: {
-            released_at: null,
-            request: { state: { notIn: ["COMPLETED", "CANCELLED"] } },
+          select: {
+            id: true,
+            released_at: true,
+            released_by_role: true,
+            request: { select: { state: true } },
+            abuse_reports: { select: { id: true } },
           },
-          select: { id: true },
         },
         admin_notices: {
           where: { resolved_at: null },
@@ -203,9 +301,12 @@ export class AdminService {
       verification_status: volunteer.verification_status,
       verified_at: volunteer.verified_at,
       review_notes: volunteer.review_notes,
-      visits_count: volunteer._count.visits,
-      active_visits_count: volunteer.visits.length,
+      ...buildPerformance(volunteer.visits),
       pending_notices_count: volunteer.admin_notices.length,
+      abuse_reports_count: volunteer.visits.reduce(
+        (sum, v) => sum + v.abuse_reports.length,
+        0,
+      ),
       created_at: volunteer.created_at,
     }));
   }
@@ -343,10 +444,28 @@ export class AdminService {
       "WAITING_VOLUNTEER",
     );
 
-    const updated = await this.prisma.propertyRequests.update({
-      where: { id: requestId },
-      data: { state: "WAITING_VOLUNTEER" },
+    // Cerrar tambien la visita: si solo se cambiara el estado de la
+    // solicitud, el caso seguiria ocupando cupo del analista y su chat
+    // quedaria abierto pese a que el caso ya no es suyo.
+    const openVisit = await this.prisma.visits.findFirst({
+      where: { request_id: requestId, released_at: null },
+      orderBy: { created_at: "desc" },
     });
+
+    const [updated] = await this.prisma.$transaction([
+      this.prisma.propertyRequests.update({
+        where: { id: requestId },
+        data: { state: "WAITING_VOLUNTEER" },
+      }),
+      ...(openVisit
+        ? [
+            this.prisma.visits.update({
+              where: { id: openVisit.id },
+              data: { released_at: new Date(), released_by_role: "ADMIN" },
+            }),
+          ]
+        : []),
+    ]);
 
     await this.audit.record({
       actorId: adminId,
