@@ -94,6 +94,9 @@ model PropertyRequests {
   geom            Unsupported("geography(Point, 4326)")
   reporter_name   String
   address_text    String
+  // Torre/bloque y apartamento, o el complemento de una casa. Sin esto
+  // el analista llega al edificio pero no sabe a que puerta tocar.
+  address_complement String?
   housing_type    HousingType
   damages_json    Json
   priority_score  Int          @default(0)

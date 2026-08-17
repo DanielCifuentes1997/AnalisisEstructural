@@ -175,6 +175,9 @@ export default function RequestDetailPage() {
                 </Row>
                 <Row label="Nombre">{request.reporter_name}</Row>
                 <Row label="Direccion">{request.address_text}</Row>
+                {request.address_complement && (
+                  <Row label="Complemento">{request.address_complement}</Row>
+                )}
                 {request.damages_json.selected?.length > 0 && (
                   <Row label="Daños reportados">
                     {request.damages_json.selected.map(damageLabel).join(", ")}

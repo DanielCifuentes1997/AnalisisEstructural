@@ -7,6 +7,7 @@ import { createPropertyRequestSchema } from "@proyecto/shared-types";
 import { Card } from "../../../../components/ui/Card";
 import {
   AddressStep,
+  buildAddressComplement,
   type AddressValue,
 } from "../../../../components/requests/wizard/AddressStep";
 import {
@@ -20,9 +21,11 @@ import { ReviewStep } from "../../../../components/requests/wizard/ReviewStep";
 import { ApiError } from "../../../../lib/api-client";
 import { useCreateRequest } from "../../../../lib/hooks/use-requests";
 
+// El tipo de vivienda va primero porque decide que complemento de
+// direccion se pide despues (torre/apto o texto libre).
 const STEP_TITLES = [
-  "Direccion",
   "Tipo de vivienda",
+  "Direccion",
   "Tus datos",
   "Daños",
   "Fotos",
@@ -38,6 +41,9 @@ export default function NewRequestPage() {
     street: "",
     city: "",
     department: "",
+    complement: "",
+    tower: "",
+    apartment: "",
     latitude: null,
     longitude: null,
   });
@@ -62,6 +68,8 @@ export default function NewRequestPage() {
       address_text: [address.street, address.city, address.department]
         .filter(Boolean)
         .join(", "),
+      address_complement:
+        buildAddressComplement(address, housingType) || undefined,
       reporter_name: reporterName,
       housing_type: housingType,
       damages_json: {
@@ -107,12 +115,17 @@ export default function NewRequestPage() {
 
       <Card>
         {step === 0 && (
-          <AddressStep value={address} onChange={setAddress} onNext={goNext} />
-        )}
-        {step === 1 && (
           <HousingTypeStep
             value={housingType}
             onChange={setHousingType}
+            onNext={goNext}
+          />
+        )}
+        {step === 1 && (
+          <AddressStep
+            value={address}
+            housingType={housingType}
+            onChange={setAddress}
             onNext={goNext}
             onBack={goBack}
           />
@@ -139,6 +152,7 @@ export default function NewRequestPage() {
         {step === 5 && (
           <ReviewStep
             address={address}
+            addressComplement={buildAddressComplement(address, housingType)}
             reporterName={reporterName}
             housingType={housingType}
             damages={damages}

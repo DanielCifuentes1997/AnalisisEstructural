@@ -13,6 +13,7 @@ const HOUSING_TYPE_LABELS: Record<HousingType, string> = {
 
 interface ReviewStepProps {
   address: AddressValue;
+  addressComplement: string;
   reporterName: string;
   housingType: HousingType | null;
   damages: DamagesValue;
@@ -25,6 +26,7 @@ interface ReviewStepProps {
 
 export function ReviewStep({
   address,
+  addressComplement,
   reporterName,
   housingType,
   damages,
@@ -45,6 +47,12 @@ export function ReviewStep({
             {[address.street, address.city, address.department].filter(Boolean).join(", ")}
           </dd>
         </div>
+        {addressComplement && (
+          <div className="flex justify-between gap-4">
+            <dt className="text-sand-500">Complemento</dt>
+            <dd className="text-right text-sand-900">{addressComplement}</dd>
+          </div>
+        )}
         <div className="flex justify-between">
           <dt className="text-sand-500">Nombre</dt>
           <dd className="text-sand-900">{reporterName}</dd>

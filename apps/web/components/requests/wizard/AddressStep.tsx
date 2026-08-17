@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import type { HousingType } from "@proyecto/shared-types";
 import { geocodeAddress } from "../../../lib/geocoding";
 import { Button } from "../../ui/Button";
 import { TextInput } from "../../ui/TextInput";
@@ -10,19 +11,49 @@ export interface AddressValue {
   street: string;
   city: string;
   department: string;
+  // Casa: complemento libre. Apartamento: torre/bloque + numero de apto.
+  complement: string;
+  tower: string;
+  apartment: string;
   latitude: number | null;
   longitude: number | null;
 }
 
-interface AddressStepProps {
-  value: AddressValue;
-  onChange: (value: AddressValue) => void;
-  onNext: () => void;
+// Compone el complemento en una sola linea legible para el analista.
+export function buildAddressComplement(
+  value: AddressValue,
+  housingType: HousingType | null,
+): string {
+  if (housingType === "APARTAMENTO") {
+    return [
+      value.tower.trim() && `Torre/Bloque ${value.tower.trim()}`,
+      value.apartment.trim() && `Apto ${value.apartment.trim()}`,
+    ]
+      .filter(Boolean)
+      .join(", ");
+  }
+  return value.complement.trim();
 }
 
-export function AddressStep({ value, onChange, onNext }: AddressStepProps) {
+interface AddressStepProps {
+  value: AddressValue;
+  housingType: HousingType | null;
+  onChange: (value: AddressValue) => void;
+  onNext: () => void;
+  onBack: () => void;
+}
+
+export function AddressStep({
+  value,
+  housingType,
+  onChange,
+  onNext,
+  onBack,
+}: AddressStepProps) {
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState<string>();
+
+  const isApartment = housingType === "APARTAMENTO";
 
   const handleSearch = async () => {
     const query = [value.street, value.city, value.department]
@@ -48,7 +79,10 @@ export function AddressStep({ value, onChange, onNext }: AddressStepProps) {
     onChange({ ...value, latitude: result.latitude, longitude: result.longitude });
   };
 
-  const canContinue = value.latitude !== null && value.longitude !== null;
+  const hasPoint = value.latitude !== null && value.longitude !== null;
+  // En un edificio el punto no basta: sin el apartamento el analista
+  // llega a la porteria y no sabe a que puerta tocar.
+  const canContinue = hasPoint && (!isApartment || value.apartment.trim() !== "");
 
   return (
     <div className="flex flex-col gap-4">
@@ -72,6 +106,32 @@ export function AddressStep({ value, onChange, onNext }: AddressStepProps) {
         value={value.department}
         onChange={(e) => onChange({ ...value, department: e.target.value })}
       />
+
+      {isApartment ? (
+        <div className="grid grid-cols-2 gap-3">
+          <TextInput
+            label="Torre o bloque"
+            placeholder="Ej. 4"
+            hint="Opcional"
+            value={value.tower}
+            onChange={(e) => onChange({ ...value, tower: e.target.value })}
+          />
+          <TextInput
+            label="Apartamento"
+            placeholder="Ej. 502"
+            value={value.apartment}
+            onChange={(e) => onChange({ ...value, apartment: e.target.value })}
+          />
+        </div>
+      ) : (
+        <TextInput
+          label="Complemento"
+          placeholder="Ej. Conjunto Los Cerros, casa 12"
+          hint="Opcional: algo que ayude a encontrar la casa"
+          value={value.complement}
+          onChange={(e) => onChange({ ...value, complement: e.target.value })}
+        />
+      )}
 
       <Button
         type="button"
@@ -99,9 +159,14 @@ export function AddressStep({ value, onChange, onNext }: AddressStepProps) {
         mapa para corregirlo.
       </p>
 
-      <Button type="button" onClick={onNext} disabled={!canContinue}>
-        Continuar
-      </Button>
+      <div className="flex gap-3">
+        <Button type="button" variant="secondary" onClick={onBack}>
+          Atras
+        </Button>
+        <Button type="button" onClick={onNext} disabled={!canContinue}>
+          Continuar
+        </Button>
+      </div>
     </div>
   );
 }

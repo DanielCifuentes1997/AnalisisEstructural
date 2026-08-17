@@ -11,13 +11,13 @@ import type {
 } from "@proyecto/shared-types";
 import { PrismaService } from "../prisma/prisma.service";
 import { RequestStateMachine } from "../workflow/request-state-machine.service";
-import { fuzzCoordinates } from "./geo-fuzzing.util";
 
 interface PropertyRequestRow {
   id: string;
   citizen_id: string;
   reporter_name: string;
   address_text: string;
+  address_complement: string | null;
   housing_type: string;
   damages_json: unknown;
   priority_score: number;
@@ -33,6 +33,7 @@ interface HeatmapRow {
   housing_type: string;
   state: string;
   created_at: Date;
+  damages_json: unknown;
   latitude: number;
   longitude: number;
 }
@@ -59,13 +60,14 @@ export class RequestsService {
 
     const rows = await this.prisma.$queryRaw<PropertyRequestRow[]>`
       INSERT INTO "PropertyRequests"
-        (id, citizen_id, geom, reporter_name, address_text, housing_type, damages_json, state, created_at, updated_at)
+        (id, citizen_id, geom, reporter_name, address_text, address_complement, housing_type, damages_json, state, created_at, updated_at)
       VALUES (
         ${id},
         ${citizenId},
         ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326)::geography,
         ${input.reporter_name},
         ${input.address_text},
+        ${input.address_complement ?? null},
         ${input.housing_type}::"HousingType",
         ${JSON.stringify(damagesJsonWithPhotos)}::jsonb,
         'REQUESTED',
@@ -73,7 +75,7 @@ export class RequestsService {
         now()
       )
       RETURNING
-        id, citizen_id, reporter_name, address_text, housing_type, damages_json, priority_score, state,
+        id, citizen_id, reporter_name, address_text, address_complement, housing_type, damages_json, priority_score, state,
         created_at, updated_at,
         ST_Y(geom::geometry) AS latitude,
         ST_X(geom::geometry) AS longitude;
@@ -188,9 +190,13 @@ export class RequestsService {
     });
   }
 
+  // El analista necesita decidir con criterio antes de aceptar: que daños
+  // hay, como se ven en las fotos y donde queda exactamente el punto.
+  // Por eso la coordenada va sin desplazar. Lo que sigue reservado hasta
+  // aceptar es la identidad: direccion, nombre y telefono del ciudadano.
   async getHeatmap(bbox: HeatmapQuery["bbox"]) {
-    const rows = await this.prisma.$queryRaw<HeatmapRow[]>`
-      SELECT id, housing_type, state, created_at,
+    return this.prisma.$queryRaw<HeatmapRow[]>`
+      SELECT id, housing_type, state, created_at, damages_json,
              ST_Y(geom::geometry) AS latitude,
              ST_X(geom::geometry) AS longitude
       FROM "PropertyRequests"
@@ -199,14 +205,7 @@ export class RequestsService {
           geom,
           ST_MakeEnvelope(${bbox.minLon}, ${bbox.minLat}, ${bbox.maxLon}, ${bbox.maxLat}, 4326)::geography
         )
+      ORDER BY created_at DESC
     `;
-
-    // Privacidad tactica (Seccion 17 y 27): los voluntarios no
-    // asignados nunca reciben la coordenada exacta, solo un punto
-    // desplazado aleatoriamente entre 150 y 250 metros.
-    return rows.map(({ latitude, longitude, ...rest }) => ({
-      ...rest,
-      ...fuzzCoordinates(latitude, longitude),
-    }));
   }
 }

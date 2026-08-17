@@ -104,6 +104,7 @@ function VisitCard({
     visit_id: string;
     reporter_name: string;
     address_text: string;
+    address_complement: string | null;
     created_at: string;
     state: React.ComponentProps<typeof StatusBadge>["state"];
   };
@@ -115,7 +116,10 @@ function VisitCard({
           <p className="truncate font-medium text-sand-900">
             {visit.reporter_name}
           </p>
-          <p className="truncate text-sm text-sand-600">{visit.address_text}</p>
+          <p className="truncate text-sm text-sand-600">
+            {visit.address_text}
+            {visit.address_complement ? ` — ${visit.address_complement}` : ""}
+          </p>
           <p className="mt-1 text-xs text-sand-500">
             Aceptada el {new Date(visit.created_at).toLocaleDateString("es-CO")}
           </p>

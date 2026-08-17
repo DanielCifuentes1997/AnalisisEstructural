@@ -12,14 +12,14 @@ interface HousingTypeStepProps {
   value: HousingType | null;
   onChange: (value: HousingType) => void;
   onNext: () => void;
-  onBack: () => void;
 }
 
+// Va antes que la direccion a proposito: de esta respuesta depende que
+// campos de complemento se le piden despues (apto/torre o texto libre).
 export function HousingTypeStep({
   value,
   onChange,
   onNext,
-  onBack,
 }: HousingTypeStepProps) {
   return (
     <div className="flex flex-col gap-4">
@@ -42,14 +42,9 @@ export function HousingTypeStep({
         ))}
       </div>
 
-      <div className="flex gap-3">
-        <Button type="button" variant="secondary" onClick={onBack}>
-          Atras
-        </Button>
-        <Button type="button" onClick={onNext} disabled={!value}>
-          Continuar
-        </Button>
-      </div>
+      <Button type="button" onClick={onNext} disabled={!value}>
+        Continuar
+      </Button>
     </div>
   );
 }

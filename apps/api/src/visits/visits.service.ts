@@ -21,6 +21,7 @@ interface RequestExactLocationRow {
   id: string;
   reporter_name: string;
   address_text: string;
+  address_complement: string | null;
   housing_type: string;
   damages_json: unknown;
   state: string;
@@ -128,6 +129,7 @@ export class VisitsService {
       request_id: visit.request_id,
       reporter_name: visit.request.reporter_name,
       address_text: visit.request.address_text,
+      address_complement: visit.request.address_complement,
       housing_type: visit.request.housing_type,
       state: visit.request.state,
     }));
@@ -135,7 +137,8 @@ export class VisitsService {
 
   private async getRequestExactLocation(requestId: string) {
     const rows = await this.prisma.$queryRaw<RequestExactLocationRow[]>`
-      SELECT pr.id, pr.reporter_name, pr.address_text, pr.housing_type, pr.damages_json, pr.state,
+      SELECT pr.id, pr.reporter_name, pr.address_text, pr.address_complement,
+             pr.housing_type, pr.damages_json, pr.state,
              ST_Y(pr.geom::geometry) AS latitude,
              ST_X(pr.geom::geometry) AS longitude,
              u.phone_number AS citizen_phone

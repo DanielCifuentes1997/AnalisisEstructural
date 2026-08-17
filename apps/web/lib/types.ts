@@ -27,6 +27,7 @@ export interface PropertyRequestListItem {
   citizen_id: string;
   reporter_name: string;
   address_text: string;
+  address_complement: string | null;
   housing_type: HousingType;
   damages_json: DamagesResponse;
   priority_score: number;
@@ -61,6 +62,7 @@ export interface VisitListItem {
   created_at: string;
   reporter_name: string;
   address_text: string;
+  address_complement: string | null;
   housing_type: HousingType;
   state: RequestState;
 }
@@ -70,12 +72,15 @@ export interface PropertyRequestCreated extends PropertyRequestListItem {
   longitude: number;
 }
 
-// GET /v1/requests/heatmap - coordenadas ofuscadas, sin datos del ciudadano.
+// GET /v1/requests/heatmap - punto real y todo lo que el analista
+// necesita para decidir si acepta (daños, descripcion, fotos). Lo que NO
+// viaja aqui es la identidad: direccion, nombre y telefono del ciudadano.
 export interface HeatmapItem {
   id: string;
   housing_type: HousingType;
   state: RequestState;
   created_at: string;
+  damages_json: DamagesResponse;
   latitude: number;
   longitude: number;
 }
@@ -86,6 +91,7 @@ export interface VisitDetail {
   id: string;
   reporter_name: string;
   address_text: string;
+  address_complement: string | null;
   housing_type: HousingType;
   damages_json: DamagesResponse;
   state: RequestState;

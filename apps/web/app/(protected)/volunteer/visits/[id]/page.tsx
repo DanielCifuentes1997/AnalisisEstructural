@@ -69,6 +69,11 @@ export default function VolunteerVisitPage() {
               <StatusBadge state={visit.state} />
             </div>
             <p className="text-sm text-sand-600">{visit.address_text}</p>
+            {visit.address_complement && (
+              <p className="text-sm font-medium text-sand-900">
+                {visit.address_complement}
+              </p>
+            )}
             <p className="text-sm text-sand-500">
               {HOUSING_TYPE_LABELS[visit.housing_type]}
             </p>

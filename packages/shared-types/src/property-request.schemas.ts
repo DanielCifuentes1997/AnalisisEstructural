@@ -18,14 +18,32 @@ export type Damages = z.infer<typeof damagesSchema>;
 
 // Datos que el ciudadano reporta en el wizard inicial (triaje), no el
 // dictamen tecnico final: ese vive en Reports y lo llena el profesional.
-export const createPropertyRequestSchema = z.object({
-  location: geoPointSchema,
-  address_text: z.string().min(5, "Escribe la direccion completa"),
-  reporter_name: z.string().min(2, "Escribe el nombre de la persona"),
-  housing_type: housingTypeSchema,
-  damages_json: damagesSchema,
-  photo_urls: z.array(z.string().url()).max(20).default([]),
-});
+export const createPropertyRequestSchema = z
+  .object({
+    location: geoPointSchema,
+    address_text: z.string().min(5, "Escribe la direccion completa"),
+    // Casa: complemento libre y opcional. Apartamento: torre/bloque y
+    // numero de apto, ya compuestos en una sola linea por el wizard.
+    address_complement: z.string().max(160).optional(),
+    reporter_name: z.string().min(2, "Escribe el nombre de la persona"),
+    housing_type: housingTypeSchema,
+    damages_json: damagesSchema,
+    photo_urls: z.array(z.string().url()).max(20).default([]),
+  })
+  .superRefine((value, ctx) => {
+    // En un edificio la direccion sola no alcanza: sin apartamento el
+    // analista llega a la porteria y no sabe a que puerta tocar.
+    if (
+      value.housing_type === "APARTAMENTO" &&
+      !value.address_complement?.trim()
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["address_complement"],
+        message: "Indica al menos el numero del apartamento",
+      });
+    }
+  });
 export type CreatePropertyRequestInput = z.infer<
   typeof createPropertyRequestSchema
 >;
