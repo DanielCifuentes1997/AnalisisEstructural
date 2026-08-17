@@ -1,7 +1,9 @@
-import { Body, Controller, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Patch, Post, UseGuards } from "@nestjs/common";
 import {
   registerVolunteerSchema,
+  updateVolunteerProfileSchema,
   type RegisterVolunteerInput,
+  type UpdateVolunteerProfileInput,
 } from "@proyecto/shared-types";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
@@ -13,6 +15,20 @@ import { VolunteersService } from "./volunteers.service";
 @UseGuards(JwtAuthGuard)
 export class VolunteersController {
   constructor(private readonly volunteersService: VolunteersService) {}
+
+  @Get("me")
+  getMyProfile(@CurrentUser() user: AccessTokenPayload) {
+    return this.volunteersService.getMyProfile(user.sub);
+  }
+
+  @Patch("me")
+  updateMyProfile(
+    @CurrentUser() user: AccessTokenPayload,
+    @Body(new ZodValidationPipe(updateVolunteerProfileSchema))
+    body: UpdateVolunteerProfileInput,
+  ) {
+    return this.volunteersService.updateMyProfile(user.sub, body);
+  }
 
   @Post()
   register(

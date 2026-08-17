@@ -5,6 +5,8 @@ import type { HousingType } from "@proyecto/shared-types";
 import { CheckinStep } from "../../../../../components/volunteer/visit/CheckinStep";
 import { NoteStep } from "../../../../../components/volunteer/visit/NoteStep";
 import { PinStep } from "../../../../../components/volunteer/visit/PinStep";
+import { ChatPanel } from "../../../../../components/chat/ChatPanel";
+import { ReleaseVisitCard } from "../../../../../components/volunteer/ReleaseVisitCard";
 import { AppHeader } from "../../../../../components/ui/AppHeader";
 import { Card } from "../../../../../components/ui/Card";
 import { Spinner } from "../../../../../components/ui/Spinner";
@@ -77,13 +79,14 @@ export default function VolunteerVisitPage() {
             <p className="text-sm text-sand-500">
               {HOUSING_TYPE_LABELS[visit.housing_type]}
             </p>
-            <a
-              href={`tel:${visit.citizen_phone}`}
-              className="mt-2 inline-block text-sm font-medium text-brand-700 underline"
-            >
-              {visit.citizen_phone}
-            </a>
           </Card>
+
+          {/* El telefono del ciudadano no se comparte: se habla por aqui. */}
+          {!visit.released_at && (
+            <div className="mb-4">
+              <ChatPanel visitId={params.id} />
+            </div>
+          )}
 
           {(visit.state === "ASSIGNED" ||
             visit.state === "SCHEDULED" ||
@@ -126,6 +129,20 @@ export default function VolunteerVisitPage() {
                 })
               }
             />
+          )}
+
+          {!visit.released_at &&
+            visit.state !== "COMPLETED" &&
+            visit.state !== "CANCELLED" && (
+              <ReleaseVisitCard visitId={params.id} />
+            )}
+
+          {visit.released_at && (
+            <Card>
+              <p className="text-sm text-sand-600">
+                Liberaste este caso. Ya está disponible para otro analista.
+              </p>
+            </Card>
           )}
 
           {visit.state === "COMPLETED" && (

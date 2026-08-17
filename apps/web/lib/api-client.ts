@@ -2,24 +2,35 @@ import type {
   AdminRequestActionInput,
   AdminRequestsQuery,
   AdminVolunteersQuery,
+  AcceptDataPolicyInput,
   CheckinInput,
+  CreateAdminNoticeInput,
   CreatePropertyRequestInput,
   RegisterVolunteerInput,
+  ReleaseVisitInput,
   RequestOtpInput,
   ReviewVolunteerInput,
+  SendMessageInput,
   Role,
   SignedUploadUrlInput,
   SubmitVisitNoteInput,
   UpdateUserStatusInput,
+  UpdateVolunteerProfileInput,
   VerifyOtpInput,
   VerifyPinInput,
 } from "@proyecto/shared-types";
 import type {
   AdminAuditLog,
+  AdminConversation,
+  AdminConversationSummary,
   AdminMetrics,
   AdminRequest,
   AdminVolunteer,
+  ConsentStatus,
+  Conversation,
   HeatmapItem,
+  MyVolunteerProfile,
+  UnreadSummary,
   PropertyRequestCreated,
   PropertyRequestDetail,
   PropertyRequestListItem,
@@ -244,7 +255,78 @@ export const apiClient = {
       { method: "POST", accessToken, body: JSON.stringify(input) },
     ),
 
+  // ---------- Chat ----------
+
+  getConversation: (accessToken: string, visitId: string) =>
+    request<Conversation>(`/v1/visits/${visitId}/messages`, { accessToken }),
+
+  sendMessage: (accessToken: string, visitId: string, input: SendMessageInput) =>
+    request<unknown>(`/v1/visits/${visitId}/messages`, {
+      method: "POST",
+      accessToken,
+      body: JSON.stringify(input),
+    }),
+
+  getUnreadSummary: (accessToken: string) =>
+    request<UnreadSummary>("/v1/messages/unread", { accessToken }),
+
+  releaseVisit: (accessToken: string, visitId: string, input: ReleaseVisitInput) =>
+    request<{ message: string }>(`/v1/visits/${visitId}/release`, {
+      method: "POST",
+      accessToken,
+      body: JSON.stringify(input),
+    }),
+
+  // ---------- Perfil del analista ----------
+
+  getMyVolunteerProfile: (accessToken: string) =>
+    request<MyVolunteerProfile>("/v1/volunteers/me", { accessToken }),
+
+  updateMyVolunteerProfile: (
+    accessToken: string,
+    input: UpdateVolunteerProfileInput,
+  ) =>
+    request<unknown>("/v1/volunteers/me", {
+      method: "PATCH",
+      accessToken,
+      body: JSON.stringify(input),
+    }),
+
+  // ---------- Habeas data ----------
+
+  getConsentStatus: (accessToken: string) =>
+    request<ConsentStatus>("/v1/consent", { accessToken }),
+
+  acceptDataPolicy: (accessToken: string, input: AcceptDataPolicyInput) =>
+    request<{ accepted_version: string }>("/v1/consent", {
+      method: "POST",
+      accessToken,
+      body: JSON.stringify(input),
+    }),
+
   // ---------- Panel de administracion ----------
+
+  createAdminNotice: (
+    accessToken: string,
+    volunteerId: string,
+    input: CreateAdminNoticeInput,
+  ) =>
+    request<unknown>(`/v1/admin/volunteers/${volunteerId}/notices`, {
+      method: "POST",
+      accessToken,
+      body: JSON.stringify(input),
+    }),
+
+  listAdminConversations: (accessToken: string) =>
+    request<AdminConversationSummary[]>("/v1/admin/conversations", {
+      accessToken,
+    }),
+
+  getAdminConversation: (accessToken: string, visitId: string) =>
+    request<AdminConversation>(`/v1/admin/conversations/${visitId}`, {
+      accessToken,
+    }),
+
 
   getAdminMetrics: (accessToken: string) =>
     request<AdminMetrics>("/v1/admin/metrics", { accessToken }),

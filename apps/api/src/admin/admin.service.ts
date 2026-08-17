@@ -1,12 +1,14 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import type {
   AdminRequestActionInput,
+  CreateAdminNoticeInput,
   AdminRequestsQuery,
   AdminVolunteersQuery,
   ReviewVolunteerInput,
   UpdateUserStatusInput,
 } from "@proyecto/shared-types";
 import { AuditService } from "../audit/audit.service";
+import { ChatService } from "../chat/chat.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { RequestStateMachine } from "../workflow/request-state-machine.service";
 
@@ -26,7 +28,108 @@ export class AdminService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly stateMachine: RequestStateMachine,
+    private readonly chat: ChatService,
   ) {}
+
+  /**
+   * Libera todos los casos abiertos de un analista y los devuelve al
+   * mapa. Se llama al desactivarlo o suspenderlo: si no, sus casos
+   * quedarian congelados con alguien que ya no puede atenderlos.
+   */
+  private async releaseAllVisitsOf(
+    adminId: string,
+    volunteerId: string,
+    reason: string,
+  ) {
+    const open = await this.prisma.visits.findMany({
+      where: {
+        volunteer_id: volunteerId,
+        released_at: null,
+        request: { state: { notIn: ["COMPLETED", "CANCELLED"] } },
+      },
+      include: { request: true },
+    });
+
+    for (const visit of open) {
+      if (!this.stateMachine.canTransition(visit.request.state, "REASSIGNMENT_REQUIRED")) {
+        continue;
+      }
+      await this.prisma.$transaction([
+        this.prisma.visits.update({
+          where: { id: visit.id },
+          data: { released_at: new Date() },
+        }),
+        this.prisma.propertyRequests.update({
+          where: { id: visit.request_id },
+          data: { state: "WAITING_VOLUNTEER" },
+        }),
+      ]);
+      await this.audit.record({
+        actorId: adminId,
+        action: "VISIT_RELEASED_BY_ADMIN",
+        resourceId: visit.id,
+        priorState: visit.request.state,
+        newState: "WAITING_VOLUNTEER",
+        notes: reason,
+      });
+    }
+
+    return open.length;
+  }
+
+  async createNotice(
+    adminId: string,
+    volunteerId: string,
+    input: CreateAdminNoticeInput,
+  ) {
+    const volunteer = await this.prisma.volunteerProfiles.findUnique({
+      where: { id: volunteerId },
+    });
+    if (!volunteer) {
+      throw new NotFoundException("Analista no encontrado");
+    }
+
+    const notice = await this.prisma.adminNotices.create({
+      data: { volunteer_id: volunteerId, admin_id: adminId, body: input.body },
+    });
+
+    await this.audit.record({
+      actorId: adminId,
+      action: "ADMIN_NOTICE_SENT",
+      resourceId: volunteerId,
+      notes: input.body,
+    });
+
+    return notice;
+  }
+
+  getConversation(visitId: string) {
+    return this.chat.getConversationForAdmin(visitId);
+  }
+
+  /** Conversaciones abiertas, para moderar sin tener que adivinar cual. */
+  async listConversations() {
+    const visits = await this.prisma.visits.findMany({
+      where: { messages: { some: {} } },
+      orderBy: { updated_at: "desc" },
+      take: 100,
+      include: {
+        request: true,
+        volunteer: true,
+        _count: { select: { messages: true } },
+      },
+    });
+
+    return visits.map((v) => ({
+      visit_id: v.id,
+      citizen_name: v.request.reporter_name,
+      volunteer_name: v.volunteer.full_name,
+      request_state: v.request.state,
+      released_at: v.released_at,
+      messages_count: v._count.messages,
+      created_at: v.created_at,
+    }));
+  }
 
   async getMetrics() {
     const [byState, volunteersByStatus, activeVolunteers, totalUsers, suspended] =
@@ -70,6 +173,17 @@ export class AdminService {
       include: {
         user: true,
         _count: { select: { visits: true } },
+        visits: {
+          where: {
+            released_at: null,
+            request: { state: { notIn: ["COMPLETED", "CANCELLED"] } },
+          },
+          select: { id: true },
+        },
+        admin_notices: {
+          where: { resolved_at: null },
+          select: { id: true },
+        },
       },
     });
 
@@ -90,6 +204,8 @@ export class AdminService {
       verified_at: volunteer.verified_at,
       review_notes: volunteer.review_notes,
       visits_count: volunteer._count.visits,
+      active_visits_count: volunteer.visits.length,
+      pending_notices_count: volunteer.admin_notices.length,
       created_at: volunteer.created_at,
     }));
   }
@@ -139,6 +255,14 @@ export class AdminService {
         newState: input.verification_status,
         notes: input.review_notes ?? null,
       });
+    }
+
+    if (input.is_active === false && volunteer.is_active) {
+      await this.releaseAllVisitsOf(
+        adminId,
+        volunteerId,
+        "Analista desactivado por el administrador",
+      );
     }
 
     if (input.is_active !== undefined && input.is_active !== volunteer.is_active) {
@@ -281,6 +405,23 @@ export class AdminService {
       where: { id: userId },
       data: { status: input.status },
     });
+
+    if (input.status === "SUSPENDED" && user.status !== "SUSPENDED") {
+      const profile = await this.prisma.volunteerProfiles.findUnique({
+        where: { user_id: userId },
+      });
+      if (profile) {
+        await this.prisma.volunteerProfiles.update({
+          where: { id: profile.id },
+          data: { is_active: false },
+        });
+        await this.releaseAllVisitsOf(
+          adminId,
+          profile.id,
+          input.reason ?? "Cuenta suspendida por el administrador",
+        );
+      }
+    }
 
     if (user.status !== input.status) {
       await this.audit.record({

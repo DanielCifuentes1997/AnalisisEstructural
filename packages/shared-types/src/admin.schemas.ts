@@ -19,6 +19,10 @@ export const auditActionSchema = z.enum([
   "USER_REACTIVATED",
   "REQUEST_RETURNED_TO_POOL",
   "REQUEST_CANCELLED_BY_ADMIN",
+  "VISIT_RELEASED_BY_VOLUNTEER",
+  "VISIT_RELEASED_BY_ADMIN",
+  "ADMIN_NOTICE_SENT",
+  "VOLUNTEER_PROFILE_UPDATED",
 ]);
 export type AuditAction = z.infer<typeof auditActionSchema>;
 

@@ -4,6 +4,7 @@ import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import { AdminModule } from "./admin/admin.module";
 import { AuditModule } from "./audit/audit.module";
 import { AuthModule } from "./auth/auth.module";
+import { ChatModule } from "./chat/chat.module";
 import { HealthController } from "./health/health.controller";
 import { PrismaModule } from "./prisma/prisma.module";
 import { RequestsModule } from "./requests/requests.module";
@@ -24,6 +25,7 @@ import { WorkflowModule } from "./workflow/workflow.module";
     VolunteersModule,
     StorageModule,
     AdminModule,
+    ChatModule,
   ],
   controllers: [HealthController],
   providers: [

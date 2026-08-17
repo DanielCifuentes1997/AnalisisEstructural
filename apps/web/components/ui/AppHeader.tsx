@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuthStore } from "../../lib/auth-store";
+import { useUnreadSummary } from "../../lib/hooks/use-chat";
 import { Logo } from "./Logo";
 
 export interface NavItem {
@@ -20,6 +21,10 @@ export function AppHeader({ subtitle, nav = [], homeHref = "/" }: AppHeaderProps
   const router = useRouter();
   const pathname = usePathname();
   const clearSession = useAuthStore((state) => state.clearSession);
+  const role = useAuthStore((state) => state.user?.role);
+  // El admin no participa en las conversaciones, no le mostramos contador.
+  const { data: unread } = useUnreadSummary();
+  const unreadTotal = role === "ADMIN" ? 0 : (unread?.total ?? 0);
 
   const handleLogout = () => {
     clearSession();
@@ -42,6 +47,14 @@ export function AppHeader({ subtitle, nav = [], homeHref = "/" }: AppHeaderProps
         </Link>
 
         <nav className="ml-auto flex items-center gap-1">
+          {unreadTotal > 0 && (
+            <span
+              className="mr-1 inline-flex min-w-6 items-center justify-center rounded-full bg-amber-500 px-2 py-1 text-xs font-bold text-white"
+              title={`${unreadTotal} mensaje(s) sin leer`}
+            >
+              {unreadTotal}
+            </span>
+          )}
           {nav.map((item) => {
             const isActive = pathname === item.href;
             return (

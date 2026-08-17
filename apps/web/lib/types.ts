@@ -2,6 +2,7 @@ import type {
   Damages,
   HousingType,
   Profession,
+  Role,
   RequestState,
   UserStatus,
   VerificationStatus,
@@ -52,6 +53,8 @@ export interface AdminVolunteer {
   verified_at: string | null;
   review_notes: string | null;
   visits_count: number;
+  active_visits_count: number;
+  pending_notices_count: number;
   created_at: string;
 }
 
@@ -117,12 +120,15 @@ export interface PropertyRequestDetail extends PropertyRequestListItem {
   // Solo llega cuando el analista ya hizo check-in y espera el PIN.
   verification_pin: string | null;
   visit_note: VisitNote | null;
+  // Solo llega mientras hay analista asignado: abre el chat.
+  active_visit_id: string | null;
 }
 
 // GET /v1/visits - los casos que este voluntario ya acepto.
 export interface VisitListItem {
   visit_id: string;
   request_id: string;
+  released_at: string | null;
   created_at: string;
   reporter_name: string;
   address_text: string;
@@ -161,6 +167,87 @@ export interface VisitDetail {
   state: RequestState;
   latitude: number;
   longitude: number;
-  citizen_phone: string;
   visit_id: string;
+  released_at: string | null;
+}
+
+// ---------- Chat entre ciudadano y analista ----------
+
+export interface ChatMessage {
+  id: string;
+  body: string;
+  sender_role: Role;
+  is_mine: boolean;
+  created_at: string;
+  read_at: string | null;
+}
+
+export interface Conversation {
+  visit_id: string;
+  request_state: RequestState;
+  is_closed: boolean;
+  counterpart: { name: string; photo_url: string | null };
+  messages: ChatMessage[];
+}
+
+export interface UnreadSummary {
+  total: number;
+  by_visit: Record<string, number>;
+}
+
+// ---------- Perfil propio del analista ----------
+
+export interface AdminNotice {
+  id: string;
+  body: string;
+  created_at: string;
+  resolved_at: string | null;
+}
+
+export interface MyVolunteerProfile {
+  id: string;
+  full_name: string;
+  id_document_number: string;
+  declared_profession: Profession;
+  professional_license: string | null;
+  photo_url: string;
+  phone_number: string;
+  verification_status: VerificationStatus;
+  is_active: boolean;
+  review_notes: string | null;
+  notices: AdminNotice[];
+}
+
+// ---------- Moderacion de conversaciones (admin) ----------
+
+export interface AdminConversationSummary {
+  visit_id: string;
+  citizen_name: string;
+  volunteer_name: string;
+  request_state: RequestState;
+  released_at: string | null;
+  messages_count: number;
+  created_at: string;
+}
+
+export interface AdminConversation {
+  visit_id: string;
+  citizen_name: string;
+  volunteer_name: string;
+  request_state: RequestState;
+  released_at: string | null;
+  messages: {
+    id: string;
+    body: string;
+    sender_role: Role;
+    author: string;
+    created_at: string;
+  }[];
+}
+
+export interface ConsentStatus {
+  current_version: string;
+  accepted_version: string | null;
+  accepted_at: string | null;
+  needs_acceptance: boolean;
 }

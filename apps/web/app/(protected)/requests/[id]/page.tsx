@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import type { HousingType, ZoneStatus } from "@proyecto/shared-types";
+import { ChatPanel } from "../../../../components/chat/ChatPanel";
 import { AppHeader } from "../../../../components/ui/AppHeader";
 import { Button } from "../../../../components/ui/Button";
 import { Card } from "../../../../components/ui/Card";
@@ -126,6 +127,10 @@ export default function RequestDetailPage() {
                   </div>
                 </div>
               </Card>
+            )}
+
+            {request.active_visit_id && (
+              <ChatPanel visitId={request.active_visit_id} />
             )}
 
             {request.visit_note && (

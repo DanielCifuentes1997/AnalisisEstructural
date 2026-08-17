@@ -8,9 +8,12 @@ import {
 } from "@nestjs/common";
 import type {
   CheckinInput,
+  ReleaseVisitInput,
   SubmitVisitNoteInput,
   VerifyPinInput,
 } from "@proyecto/shared-types";
+import { MAX_ACTIVE_VISITS } from "@proyecto/shared-types";
+import { AuditService } from "../audit/audit.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { RequestStateMachine } from "../workflow/request-state-machine.service";
 import { generatePin, hashPin } from "./pin.util";
@@ -27,7 +30,6 @@ interface RequestExactLocationRow {
   state: string;
   latitude: number;
   longitude: number;
-  citizen_phone: string;
 }
 
 interface DistanceRow {
@@ -41,7 +43,20 @@ export class VisitsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly stateMachine: RequestStateMachine,
+    private readonly audit: AuditService,
   ) {}
+
+  // Un caso sigue "ocupando cupo" mientras no se haya cerrado ni
+  // liberado. Es lo que impide que una cuenta falsa acapare el mapa.
+  private countActiveVisits(volunteerId: string) {
+    return this.prisma.visits.count({
+      where: {
+        volunteer_id: volunteerId,
+        released_at: null,
+        request: { state: { notIn: ["COMPLETED", "CANCELLED"] } },
+      },
+    });
+  }
 
   async acceptRequest(userId: string, requestId: string) {
     const volunteer = await this.prisma.volunteerProfiles.findUnique({
@@ -62,6 +77,13 @@ export class VisitsService {
     });
     if (!request) {
       throw new NotFoundException("Solicitud no encontrada");
+    }
+
+    const activeVisits = await this.countActiveVisits(volunteer.id);
+    if (activeVisits >= MAX_ACTIVE_VISITS) {
+      throw new ForbiddenException(
+        `Ya tienes ${MAX_ACTIVE_VISITS} casos abiertos. Termina o libera alguno antes de aceptar otro.`,
+      );
     }
 
     // Nota: esta verificacion no es atomica frente a dos voluntarios
@@ -125,6 +147,7 @@ export class VisitsService {
 
     return visits.map((visit) => ({
       visit_id: visit.id,
+      released_at: visit.released_at,
       created_at: visit.created_at,
       request_id: visit.request_id,
       reporter_name: visit.request.reporter_name,
@@ -135,15 +158,61 @@ export class VisitsService {
     }));
   }
 
+  /**
+   * El analista suelta un caso al que ya no puede ir. Sin esto, el
+   * limite de casos activos lo dejaria atrapado: solo el admin podia
+   * liberar, y la solicitud se quedaba esperando a alguien que no iba.
+   */
+  async releaseVisit(
+    userId: string,
+    visitId: string,
+    input: ReleaseVisitInput,
+  ) {
+    const visit = await this.getOwnedVisit(userId, visitId);
+
+    if (visit.released_at) {
+      throw new BadRequestException("Este caso ya fue liberado");
+    }
+
+    this.stateMachine.assertTransition(
+      visit.request.state,
+      "REASSIGNMENT_REQUIRED",
+    );
+    this.stateMachine.assertTransition(
+      "REASSIGNMENT_REQUIRED",
+      "WAITING_VOLUNTEER",
+    );
+
+    await this.prisma.$transaction([
+      this.prisma.visits.update({
+        where: { id: visitId },
+        data: { released_at: new Date() },
+      }),
+      this.prisma.propertyRequests.update({
+        where: { id: visit.request_id },
+        data: { state: "WAITING_VOLUNTEER" },
+      }),
+    ]);
+
+    await this.audit.record({
+      actorId: userId,
+      action: "VISIT_RELEASED_BY_VOLUNTEER",
+      resourceId: visitId,
+      priorState: visit.request.state,
+      newState: "WAITING_VOLUNTEER",
+      notes: input.reason ?? null,
+    });
+
+    return { message: "Caso liberado. Vuelve a estar disponible en el mapa." };
+  }
+
   private async getRequestExactLocation(requestId: string) {
     const rows = await this.prisma.$queryRaw<RequestExactLocationRow[]>`
       SELECT pr.id, pr.reporter_name, pr.address_text, pr.address_complement,
              pr.housing_type, pr.damages_json, pr.state,
              ST_Y(pr.geom::geometry) AS latitude,
-             ST_X(pr.geom::geometry) AS longitude,
-             u.phone_number AS citizen_phone
+             ST_X(pr.geom::geometry) AS longitude
       FROM "PropertyRequests" pr
-      JOIN "Users" u ON u.id = pr.citizen_id
       WHERE pr.id = ${requestId}
     `;
 

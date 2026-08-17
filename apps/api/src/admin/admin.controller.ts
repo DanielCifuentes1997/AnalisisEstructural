@@ -14,11 +14,13 @@ import {
   adminRequestActionSchema,
   adminRequestsQuerySchema,
   adminVolunteersQuerySchema,
+  createAdminNoticeSchema,
   reviewVolunteerSchema,
   updateUserStatusSchema,
   type AdminRequestActionInput,
   type AdminRequestsQuery,
   type AdminVolunteersQuery,
+  type CreateAdminNoticeInput,
   type ReviewVolunteerInput,
   type UpdateUserStatusInput,
 } from "@proyecto/shared-types";
@@ -57,6 +59,27 @@ export class AdminController {
     body: ReviewVolunteerInput,
   ) {
     return this.adminService.reviewVolunteer(user.sub, id, body);
+  }
+
+  @Post("volunteers/:id/notices")
+  @HttpCode(201)
+  createNotice(
+    @CurrentUser() user: AccessTokenPayload,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(createAdminNoticeSchema))
+    body: CreateAdminNoticeInput,
+  ) {
+    return this.adminService.createNotice(user.sub, id, body);
+  }
+
+  @Get("conversations")
+  listConversations() {
+    return this.adminService.listConversations();
+  }
+
+  @Get("conversations/:id")
+  conversation(@Param("id", ParseUUIDPipe) id: string) {
+    return this.adminService.getConversation(id);
   }
 
   @Get("requests")

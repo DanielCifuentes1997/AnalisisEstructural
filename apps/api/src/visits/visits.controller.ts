@@ -9,9 +9,11 @@ import {
 } from "@nestjs/common";
 import {
   checkinSchema,
+  releaseVisitSchema,
   submitVisitNoteSchema,
   verifyPinSchema,
   type CheckinInput,
+  type ReleaseVisitInput,
   type SubmitVisitNoteInput,
   type VerifyPinInput,
 } from "@proyecto/shared-types";
@@ -58,6 +60,15 @@ export class VisitsController {
     @Body(new ZodValidationPipe(verifyPinSchema)) body: VerifyPinInput,
   ) {
     return this.visitsService.verifyPin(user.sub, id, body);
+  }
+
+  @Post(":id/release")
+  release(
+    @CurrentUser() user: AccessTokenPayload,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(releaseVisitSchema)) body: ReleaseVisitInput,
+  ) {
+    return this.visitsService.releaseVisit(user.sub, id, body);
   }
 
   @Post(":id/note")

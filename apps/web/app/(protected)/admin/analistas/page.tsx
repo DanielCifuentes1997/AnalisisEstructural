@@ -3,6 +3,7 @@
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
+  MAX_ACTIVE_VISITS,
   requiresProfessionalLicense,
   type VerificationStatus,
 } from "@proyecto/shared-types";
@@ -12,6 +13,9 @@ import { Button } from "../../../../components/ui/Button";
 import { Card } from "../../../../components/ui/Card";
 import { Spinner } from "../../../../components/ui/Spinner";
 import { ApiError } from "../../../../lib/api-client";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiClient } from "../../../../lib/api-client";
+import { useAuthStore } from "../../../../lib/auth-store";
 import {
   useAdminVolunteers,
   useReviewVolunteer,
@@ -113,8 +117,22 @@ function AnalistasContent() {
 function VolunteerCard({ volunteer }: { volunteer: AdminVolunteer }) {
   const review = useReviewVolunteer();
   const updateStatus = useUpdateUserStatus();
+  const accessToken = useAuthStore((state) => state.accessToken);
+  const queryClient = useQueryClient();
   const [notes, setNotes] = useState(volunteer.review_notes ?? "");
   const [showReject, setShowReject] = useState(false);
+  const [showNotice, setShowNotice] = useState(false);
+  const [noticeBody, setNoticeBody] = useState("");
+
+  const sendNotice = useMutation({
+    mutationFn: (body: string) =>
+      apiClient.createAdminNotice(accessToken as string, volunteer.id, { body }),
+    onSuccess: () => {
+      setShowNotice(false);
+      setNoticeBody("");
+      void queryClient.invalidateQueries({ queryKey: ["admin"] });
+    },
+  });
 
   const needsLicense = requiresProfessionalLicense(
     volunteer.declared_profession,
@@ -157,6 +175,11 @@ function VolunteerCard({ volunteer }: { volunteer: AdminVolunteer }) {
                 Cuenta suspendida
               </span>
             )}
+            {volunteer.pending_notices_count > 0 && (
+              <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
+                {volunteer.pending_notices_count} aviso(s) sin atender
+              </span>
+            )}
           </div>
           <p className="mt-1 text-sm text-sand-600">
             {PROFESSION_LABELS[volunteer.declared_profession]}
@@ -177,6 +200,11 @@ function VolunteerCard({ volunteer }: { volunteer: AdminVolunteer }) {
         />
         <Field label="Visitas realizadas" value={String(volunteer.visits_count)} />
         <Field
+          label="Casos abiertos ahora"
+          value={`${volunteer.active_visits_count} de ${MAX_ACTIVE_VISITS}`}
+          highlight={volunteer.active_visits_count >= MAX_ACTIVE_VISITS}
+        />
+        <Field
           label="Registrado"
           value={new Date(volunteer.created_at).toLocaleDateString("es-CO")}
         />
@@ -196,6 +224,32 @@ function VolunteerCard({ volunteer }: { volunteer: AdminVolunteer }) {
       )}
 
       {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+
+      {showNotice && (
+        <div className="mt-4 flex flex-col gap-3 border-t border-sand-100 pt-4">
+          <label className="text-sm font-medium text-sand-700">
+            Aviso para el analista (lo verá al entrar a su perfil)
+          </label>
+          <textarea
+            className="min-h-20 rounded-xl border border-sand-300 px-4 py-3 text-base"
+            placeholder="Ej. Tu foto de perfil no es una foto tuya real. Corrígela o tu cuenta será bloqueada."
+            value={noticeBody}
+            onChange={(e) => setNoticeBody(e.target.value)}
+          />
+          <div className="flex flex-wrap gap-2">
+            <Button variant="secondary" onClick={() => setShowNotice(false)}>
+              Cancelar
+            </Button>
+            <Button
+              isLoading={sendNotice.isPending}
+              disabled={noticeBody.trim().length < 10}
+              onClick={() => sendNotice.mutate(noticeBody)}
+            >
+              Enviar aviso
+            </Button>
+          </div>
+        </div>
+      )}
 
       {showReject ? (
         <div className="mt-4 flex flex-col gap-3 border-t border-sand-100 pt-4">
@@ -253,6 +307,9 @@ function VolunteerCard({ volunteer }: { volunteer: AdminVolunteer }) {
               Rechazar
             </Button>
           )}
+          <Button variant="secondary" onClick={() => setShowNotice(true)}>
+            Dejar aviso
+          </Button>
           <Button
             variant="secondary"
             isLoading={review.isPending}

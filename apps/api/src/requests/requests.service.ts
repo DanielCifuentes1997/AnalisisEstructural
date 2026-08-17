@@ -170,7 +170,18 @@ export class RequestsService {
         }
       : null;
 
-    return { ...rest, assigned_volunteer, verification_pin, visit_note };
+    // El ciudadano necesita el id de la visita para abrir el chat, pero
+    // solo mientras haya un analista asignado y el caso siga vivo.
+    const active_visit_id =
+      visit && !visit.released_at && assigned_volunteer ? visit.id : null;
+
+    return {
+      ...rest,
+      assigned_volunteer,
+      active_visit_id,
+      verification_pin,
+      visit_note,
+    };
   }
 
   async cancelForCitizen(citizenId: string, requestId: string) {

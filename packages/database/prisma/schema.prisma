@@ -78,8 +78,14 @@ model Users {
   created_at        DateTime            @default(now())
   updated_at        DateTime            @updatedAt
 
+  // Habeas data (Ley 1581 de 2012): se guarda cuando y que version de
+  // la politica acepto, porque la autorizacion debe poder demostrarse.
+  data_consent_at      DateTime?
+  data_consent_version String?
+
   VolunteerProfile  VolunteerProfiles?
   property_requests PropertyRequests[]
+  messages          Messages[]
 }
 
 // Voluntarios de acompañamiento comunitario: sin cruce contra COPNIA/CPNAA,
@@ -108,6 +114,7 @@ model VolunteerProfiles {
 
   user                Users      @relation(fields: [user_id], references: [id])
   visits              Visits[]
+  admin_notices       AdminNotices[]
 }
 
 model PropertyRequests {
@@ -143,9 +150,49 @@ model Visits {
   created_at       DateTime @default(now())
   updated_at       DateTime @updatedAt
 
+  // Se marca cuando el caso se libera (por el analista o por el admin):
+  // la visita queda como historial, pero deja de contar para el limite
+  // de casos activos y su chat se cierra.
+  released_at      DateTime?
+
   request          PropertyRequests  @relation(fields: [request_id], references: [id])
   volunteer        VolunteerProfiles @relation(fields: [volunteer_id], references: [id])
   visit_note       VisitNotes?
+  messages         Messages[]
+}
+
+// Chat entre el ciudadano y el analista asignado. Existe para que puedan
+// cuadrar la visita sin intercambiar telefonos: el numero del ciudadano
+// nunca se le entrega al analista. El admin puede leerlo para moderar.
+model Messages {
+  id          String   @id @default(uuid())
+  visit_id    String
+  sender_id   String
+  sender_role Role
+  body        String
+  read_at     DateTime?
+  created_at  DateTime @default(now())
+
+  visit       Visits   @relation(fields: [visit_id], references: [id])
+  sender      Users    @relation(fields: [sender_id], references: [id])
+
+  @@index([visit_id, created_at])
+}
+
+// Aviso del admin a un analista ("tu foto no es real", "la matricula no
+// coincide"). El analista lo ve al entrar y puede corregir; si no lo
+// hace, el admin decide bloquearlo.
+model AdminNotices {
+  id           String   @id @default(uuid())
+  volunteer_id String
+  admin_id     String
+  body         String
+  resolved_at  DateTime?
+  created_at   DateTime @default(now())
+
+  volunteer    VolunteerProfiles @relation(fields: [volunteer_id], references: [id])
+
+  @@index([volunteer_id, created_at])
 }
 
 // Nota informal de acompañamiento (no un dictamen oficial): por zonas/
