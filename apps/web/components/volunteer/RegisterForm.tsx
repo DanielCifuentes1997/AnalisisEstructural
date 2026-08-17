@@ -1,7 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { registerVolunteerSchema, type RegisterVolunteerInput } from "@proyecto/shared-types";
+import {
+  registerVolunteerSchema,
+  requiresProfessionalLicense,
+  type Profession,
+  type RegisterVolunteerInput,
+} from "@proyecto/shared-types";
 import { useUploadPhoto } from "../../lib/hooks/use-upload";
 import { PROFESSION_LABELS } from "../../lib/profession-labels";
 import { Button } from "../ui/Button";
@@ -17,11 +22,15 @@ export function RegisterForm({ onSubmit, isLoading, errorMessage }: RegisterForm
   const [fullName, setFullName] = useState("");
   const [idDocumentNumber, setIdDocumentNumber] = useState("");
   const [declaredProfession, setDeclaredProfession] = useState("");
+  const [professionalLicense, setProfessionalLicense] = useState("");
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string>();
 
   const uploadPhoto = useUploadPhoto();
+  const needsLicense = requiresProfessionalLicense(
+    declaredProfession as Profession,
+  );
 
   const handlePhotoChange = (file: File | undefined) => {
     if (!file) return;
@@ -40,6 +49,7 @@ export function RegisterForm({ onSubmit, isLoading, errorMessage }: RegisterForm
       full_name: fullName,
       id_document_number: idDocumentNumber,
       declared_profession: declaredProfession,
+      professional_license: needsLicense ? professionalLicense : undefined,
       photo_url: photoUrl,
     });
 
@@ -55,8 +65,8 @@ export function RegisterForm({ onSubmit, isLoading, errorMessage }: RegisterForm
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <p className="text-sm text-sand-600">
-        No pedimos matricula profesional ni cruce con colegios — esto es
-        acompañamiento comunitario informal, no una inspección oficial.
+        Esto es acompañamiento comunitario informal, no una inspección
+        oficial: no cruzamos tu matrícula contra COPNIA ni CPNAA.
         Cualquier persona con criterio técnico puede ayudar.
       </p>
 
@@ -80,7 +90,14 @@ export function RegisterForm({ onSubmit, isLoading, errorMessage }: RegisterForm
         <select
           className="min-h-12 rounded-xl border border-sand-300 bg-white px-4 text-base"
           value={declaredProfession}
-          onChange={(e) => setDeclaredProfession(e.target.value)}
+          onChange={(e) => {
+            setDeclaredProfession(e.target.value);
+            // Al cambiar a un oficio sin matricula se limpia el campo,
+            // para no enviar un numero que ya no corresponde.
+            if (!requiresProfessionalLicense(e.target.value as Profession)) {
+              setProfessionalLicense("");
+            }
+          }}
         >
           <option value="">Selecciona una opcion</option>
           {Object.entries(PROFESSION_LABELS).map(([value, label]) => (
@@ -90,6 +107,16 @@ export function RegisterForm({ onSubmit, isLoading, errorMessage }: RegisterForm
           ))}
         </select>
       </div>
+
+      {needsLicense && (
+        <TextInput
+          label="Numero de matricula o tarjeta profesional"
+          placeholder="Ej. 63202-123456"
+          hint="Solo lo ve el equipo que administra la plataforma, para verificarlo. Nunca se le muestra a la persona que ayudes."
+          value={professionalLicense}
+          onChange={(e) => setProfessionalLicense(e.target.value)}
+        />
+      )}
 
       <div className="flex flex-col gap-1">
         <label className="text-sm font-medium text-sand-700">

@@ -48,6 +48,10 @@ export class VolunteersService {
             full_name: input.full_name,
             id_document_number: input.id_document_number,
             declared_profession: input.declared_profession,
+            // Los oficios sin matricula mandan el campo vacio; se guarda
+            // null en vez de "" para que el admin distinga "no aplica"
+            // de "aplica pero esta en blanco".
+            professional_license: input.professional_license?.trim() || null,
             photo_url: input.photo_url,
           },
         }),

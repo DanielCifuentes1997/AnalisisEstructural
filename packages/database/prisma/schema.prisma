@@ -79,6 +79,11 @@ model VolunteerProfiles {
   full_name           String
   id_document_number  String     @unique
   declared_profession Profession
+  // Matricula/tarjeta profesional (COPNIA o CPNAA). Solo se pide a las
+  // profesiones universitarias que la tienen, y es dato interno: se
+  // guarda para verificacion manual del admin, nunca se le muestra al
+  // ciudadano ni viaja en respuestas publicas.
+  professional_license String?
   photo_url           String
   is_active           Boolean    @default(true)
   created_at          DateTime   @default(now())
