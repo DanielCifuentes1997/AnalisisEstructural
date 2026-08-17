@@ -110,6 +110,10 @@ model Visits {
   request_id       String
   volunteer_id     String
   otp_hash         String
+  // El ciudadano necesita poder leer su PIN en pantalla para dictarselo
+  // al voluntario en persona; el hash se conserva para la verificacion.
+  // Este campo NUNCA se expone al voluntario.
+  pin_code         String
   checkin_location Unsupported("geography(Point, 4326)")?
   created_at       DateTime @default(now())
   updated_at       DateTime @updatedAt

@@ -15,6 +15,7 @@ import type {
   PropertyRequestDetail,
   PropertyRequestListItem,
   VisitDetail,
+  VisitListItem,
 } from "./types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
@@ -52,15 +53,34 @@ export class ApiError extends Error {
   }
 }
 
-async function request<TResponse>(
+export interface SessionUser {
+  id: string;
+  phone_number: string;
+  role: Role;
+}
+
+// Se inyecta desde auth-store para evitar un import circular: el cliente
+// necesita poder refrescar la sesion, y el store necesita al cliente.
+let onSessionRefreshed: ((accessToken: string, user: SessionUser) => void) | null =
+  null;
+let onSessionExpired: (() => void) | null = null;
+
+export function registerSessionHandlers(handlers: {
+  onRefreshed: (accessToken: string, user: SessionUser) => void;
+  onExpired: () => void;
+}) {
+  onSessionRefreshed = handlers.onRefreshed;
+  onSessionExpired = handlers.onExpired;
+}
+
+async function rawFetch(
   path: string,
-  options: RequestInit & { accessToken?: string | null } = {},
-): Promise<TResponse> {
+  options: RequestInit & { accessToken?: string | null },
+): Promise<Response> {
   const { accessToken, headers, ...rest } = options;
 
-  let res: Response;
   try {
-    res = await fetch(`${API_BASE_URL}${path}`, {
+    return await fetch(`${API_BASE_URL}${path}`, {
       ...rest,
       credentials: "include",
       headers: {
@@ -75,6 +95,54 @@ async function request<TResponse>(
       error: "NetworkError",
       statusCode: 0,
     });
+  }
+}
+
+// Una sola renovacion en vuelo, aunque varias queries fallen con 401 a la
+// vez: todas esperan la misma promesa en lugar de pedir tokens en paralelo.
+let refreshInFlight: Promise<string | null> | null = null;
+
+async function refreshAccessToken(): Promise<string | null> {
+  refreshInFlight ??= (async () => {
+    try {
+      const res = await rawFetch("/v1/auth/refresh", { method: "POST" });
+      if (!res.ok) return null;
+      const body = (await res.json()) as {
+        accessToken: string;
+        user: SessionUser;
+      };
+      onSessionRefreshed?.(body.accessToken, body.user);
+      return body.accessToken;
+    } catch {
+      return null;
+    } finally {
+      // Se libera en el microtask siguiente para que las llamadas que
+      // llegaron durante la renovacion reusen este mismo resultado.
+      queueMicrotask(() => {
+        refreshInFlight = null;
+      });
+    }
+  })();
+
+  return refreshInFlight;
+}
+
+async function request<TResponse>(
+  path: string,
+  options: RequestInit & { accessToken?: string | null } = {},
+): Promise<TResponse> {
+  let res = await rawFetch(path, options);
+
+  // Sesion vencida: renovamos con la cookie httpOnly y reintentamos una
+  // sola vez, para que el usuario nunca vea la pantalla de login a media
+  // tarea. El propio /refresh no se reintenta a si mismo.
+  if (res.status === 401 && !path.startsWith("/v1/auth/")) {
+    const newToken = await refreshAccessToken();
+    if (newToken) {
+      res = await rawFetch(path, { ...options, accessToken: newToken });
+    } else {
+      onSessionExpired?.();
+    }
   }
 
   if (res.status === 204) return undefined as TResponse;
@@ -117,6 +185,12 @@ export const apiClient = {
   getRequest: (accessToken: string, id: string) =>
     request<PropertyRequestDetail>(`/v1/requests/${id}`, { accessToken }),
 
+  cancelRequest: (accessToken: string, id: string) =>
+    request<PropertyRequestListItem>(`/v1/requests/${id}/cancel`, {
+      method: "POST",
+      accessToken,
+    }),
+
   registerVolunteer: (accessToken: string, input: RegisterVolunteerInput) =>
     request<{ profile: unknown; accessToken: string }>("/v1/volunteers", {
       method: "POST",
@@ -135,6 +209,9 @@ export const apiClient = {
       method: "POST",
       accessToken,
     }),
+
+  listMyVisits: (accessToken: string) =>
+    request<VisitListItem[]>("/v1/visits", { accessToken }),
 
   getVisit: (accessToken: string, visitId: string) =>
     request<VisitDetail>(`/v1/visits/${visitId}`, { accessToken }),

@@ -21,3 +21,10 @@ export const verifyOtpSchema = requestOtpSchema.extend({
     .regex(/^\d{6}$/, "El codigo OTP debe tener exactamente 6 digitos"),
 });
 export type VerifyOtpInput = z.infer<typeof verifyOtpSchema>;
+
+// Renovacion de sesion: el access token es corto, pero el refresh dura
+// semanas para que nadie pierda la sesion en medio de un reporte.
+export const refreshTokenSchema = z.object({
+  refresh_token: z.string().min(10, "Refresh token invalido"),
+});
+export type RefreshTokenInput = z.infer<typeof refreshTokenSchema>;

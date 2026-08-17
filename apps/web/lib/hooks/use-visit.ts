@@ -18,7 +18,18 @@ export function useAcceptRequest() {
       apiClient.acceptRequest(accessToken as string, requestId),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["heatmap"] });
+      void queryClient.invalidateQueries({ queryKey: ["visits"] });
     },
+  });
+}
+
+export function useMyVisits() {
+  const accessToken = useAuthStore((state) => state.accessToken);
+
+  return useQuery({
+    queryKey: ["visits", "mine"],
+    queryFn: () => apiClient.listMyVisits(accessToken as string),
+    enabled: Boolean(accessToken),
   });
 }
 
@@ -40,7 +51,7 @@ export function useCheckinVisit(visitId: string) {
     mutationFn: (input: CheckinInput) =>
       apiClient.checkinVisit(accessToken as string, visitId, input),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["visits", visitId] });
+      void queryClient.invalidateQueries({ queryKey: ["visits"] });
     },
   });
 }
@@ -53,7 +64,7 @@ export function useVerifyVisitPin(visitId: string) {
     mutationFn: (input: VerifyPinInput) =>
       apiClient.verifyVisitPin(accessToken as string, visitId, input),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["visits", visitId] });
+      void queryClient.invalidateQueries({ queryKey: ["visits"] });
     },
   });
 }
@@ -66,7 +77,7 @@ export function useSubmitVisitNote(visitId: string) {
     mutationFn: (input: SubmitVisitNoteInput) =>
       apiClient.submitVisitNote(accessToken as string, visitId, input),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["visits", visitId] });
+      void queryClient.invalidateQueries({ queryKey: ["visits"] });
     },
   });
 }

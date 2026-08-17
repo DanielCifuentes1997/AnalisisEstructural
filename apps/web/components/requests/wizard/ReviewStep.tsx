@@ -36,40 +36,40 @@ export function ReviewStep({
 }: ReviewStepProps) {
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-sm text-gray-600">Revisa antes de enviar:</p>
+      <p className="text-sm text-sand-600">Revisa antes de enviar:</p>
 
-      <dl className="flex flex-col gap-2 rounded-lg bg-gray-50 p-4 text-sm">
+      <dl className="flex flex-col gap-2 rounded-lg bg-sand-50 p-4 text-sm">
         <div className="flex justify-between gap-4">
-          <dt className="text-gray-500">Direccion</dt>
-          <dd className="text-right text-gray-900">
+          <dt className="text-sand-500">Direccion</dt>
+          <dd className="text-right text-sand-900">
             {[address.street, address.city, address.department].filter(Boolean).join(", ")}
           </dd>
         </div>
         <div className="flex justify-between">
-          <dt className="text-gray-500">Nombre</dt>
-          <dd className="text-gray-900">{reporterName}</dd>
+          <dt className="text-sand-500">Nombre</dt>
+          <dd className="text-sand-900">{reporterName}</dd>
         </div>
         <div className="flex justify-between">
-          <dt className="text-gray-500">Tipo</dt>
-          <dd className="text-gray-900">
+          <dt className="text-sand-500">Tipo</dt>
+          <dd className="text-sand-900">
             {housingType ? HOUSING_TYPE_LABELS[housingType] : "-"}
           </dd>
         </div>
         <div className="flex justify-between gap-4">
-          <dt className="text-gray-500">Daños reportados</dt>
-          <dd className="text-right text-gray-900">
+          <dt className="text-sand-500">Daños reportados</dt>
+          <dd className="text-right text-sand-900">
             {damages.selected.length > 0
               ? damages.selected.map(damageLabel).join(", ")
               : "Ninguno marcado"}
           </dd>
         </div>
         <div className="flex flex-col gap-1">
-          <dt className="text-gray-500">Descripcion</dt>
-          <dd className="text-gray-900">{damages.description}</dd>
+          <dt className="text-sand-500">Descripcion</dt>
+          <dd className="text-sand-900">{damages.description}</dd>
         </div>
         {photoUrls.length > 0 && (
           <div className="flex flex-col gap-1">
-            <dt className="text-gray-500">Fotos ({photoUrls.length})</dt>
+            <dt className="text-sand-500">Fotos ({photoUrls.length})</dt>
             <dd className="grid grid-cols-4 gap-2">
               {photoUrls.map((url) => (
                 // eslint-disable-next-line @next/next/no-img-element -- URL remota de Supabase Storage
@@ -85,7 +85,7 @@ export function ReviewStep({
         )}
       </dl>
 
-      <p className="text-sm text-gray-500">
+      <p className="text-sm text-sand-500">
         Un voluntario con criterio tecnico revisara tu reporte y te
         contactara para dar acompañamiento informal mientras llega la
         autoridad competente. Esto no es una inspeccion oficial.

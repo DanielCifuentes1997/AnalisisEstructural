@@ -77,6 +77,7 @@ export class VisitsService {
           request_id: requestId,
           volunteer_id: volunteer.id,
           otp_hash: hashPin(pin),
+          pin_code: pin,
         },
       }),
       this.prisma.propertyRequests.update({
@@ -85,12 +86,11 @@ export class VisitsService {
       }),
     ]);
 
-    // El voluntario NUNCA debe conocer el PIN de antemano (lo custodia el
-    // ciudadano y se lo dicta en persona) - por eso se registra en el log
-    // de desarrollo en vez de devolverse en la respuesta de este endpoint.
-    // En produccion esto se enviaria por SMS al ciudadano (Seccion 38).
-    this.logger.warn(
-      `[DEV PIN] Codigo de visita para la solicitud ${requestId}: ${pin} (en produccion se envia por SMS al ciudadano)`,
+    // El voluntario NUNCA debe conocer el PIN de antemano: lo custodia el
+    // ciudadano, que lo ve en su propia pantalla (GET /v1/requests/:id) y
+    // se lo dicta en persona al voluntario cuando este llega.
+    this.logger.log(
+      `Visita ${visit.id} creada para la solicitud ${requestId}; el PIN quedo visible para el ciudadano.`,
     );
 
     const location = await this.getRequestExactLocation(requestId);
@@ -103,6 +103,34 @@ export class VisitsService {
     const location = await this.getRequestExactLocation(visit.request_id);
 
     return { ...location, visit_id: visit.id };
+  }
+
+  // Sin esto, un voluntario que cerraba el navegador perdia el acceso a
+  // los casos que ya habia aceptado: no habia forma de recuperar el id
+  // de la visita.
+  async listMyVisits(userId: string) {
+    const volunteer = await this.prisma.volunteerProfiles.findUnique({
+      where: { user_id: userId },
+    });
+    if (!volunteer) {
+      throw new ForbiddenException("No tienes un perfil de voluntario");
+    }
+
+    const visits = await this.prisma.visits.findMany({
+      where: { volunteer_id: volunteer.id },
+      orderBy: { created_at: "desc" },
+      include: { request: true },
+    });
+
+    return visits.map((visit) => ({
+      visit_id: visit.id,
+      created_at: visit.created_at,
+      request_id: visit.request_id,
+      reporter_name: visit.request.reporter_name,
+      address_text: visit.request.address_text,
+      housing_type: visit.request.housing_type,
+      state: visit.request.state,
+    }));
   }
 
   private async getRequestExactLocation(requestId: string) {

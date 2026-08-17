@@ -4,7 +4,7 @@ import { RequestCard } from "./RequestCard";
 export function RequestList({ requests }: { requests: PropertyRequestListItem[] }) {
   if (requests.length === 0) {
     return (
-      <p className="py-8 text-center text-gray-500">
+      <p className="py-8 text-center text-sand-500">
         Todavia no has reportado ninguna vivienda.
       </p>
     );

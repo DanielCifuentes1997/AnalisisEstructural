@@ -1,5 +1,6 @@
 import "reflect-metadata";
 import { NestFactory } from "@nestjs/core";
+import cookieParser from "cookie-parser";
 import { AppModule } from "./app.module";
 
 const REQUIRED_ENV_VARS = ["JWT_SECRET_KEY", "DATABASE_URL", "DIRECT_URL"];
@@ -17,6 +18,10 @@ async function bootstrap() {
   assertRequiredEnv();
 
   const app = await NestFactory.create(AppModule);
+
+  // El refresh token viaja en cookie httpOnly (nunca lo toca el JS del
+  // navegador), asi que necesitamos parsear cookies para renovarlo.
+  app.use(cookieParser());
 
   app.enableCors({
     origin: (process.env.CORS_ORIGIN ?? "http://localhost:3000").split(","),

@@ -25,6 +25,18 @@ export function useRequestDetail(id: string) {
   });
 }
 
+export function useCancelRequest(id: string) {
+  const accessToken = useAuthStore((state) => state.accessToken);
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => apiClient.cancelRequest(accessToken as string, id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["requests"] });
+    },
+  });
+}
+
 export function useCreateRequest() {
   const accessToken = useAuthStore((state) => state.accessToken);
   const queryClient = useQueryClient();

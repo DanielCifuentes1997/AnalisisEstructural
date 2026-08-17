@@ -4,9 +4,10 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { RequestSidePanel } from "../../../../components/volunteer/RequestSidePanel";
 import { HeatmapMap } from "../../../../components/volunteer/HeatmapMap";
+import { VOLUNTEER_NAV } from "../../../../components/volunteer/nav";
+import { AppHeader } from "../../../../components/ui/AppHeader";
 import { Spinner } from "../../../../components/ui/Spinner";
 import { ApiError } from "../../../../lib/api-client";
-import { useAuthStore } from "../../../../lib/auth-store";
 import { useHeatmap } from "../../../../lib/hooks/use-heatmap";
 import { useAcceptRequest } from "../../../../lib/hooks/use-visit";
 import { useRequireVolunteerRole } from "../../../../lib/hooks/use-require-volunteer-role";
@@ -17,7 +18,6 @@ const BBOX_DEBOUNCE_MS = 400;
 export default function VolunteerMapPage() {
   const router = useRouter();
   const isVolunteer = useRequireVolunteerRole();
-  const clearSession = useAuthStore((state) => state.clearSession);
 
   const [bbox, setBbox] = useState<string | null>(null);
   const [selected, setSelected] = useState<HeatmapItem | null>(null);
@@ -51,19 +51,13 @@ export default function VolunteerMapPage() {
 
   return (
     <div className="flex h-screen flex-col">
-      <header className="flex min-h-12 items-center justify-between border-b border-gray-200 bg-white px-4 py-2">
-        <span className="text-sm font-semibold text-gray-900">
-          Mapa de solicitudes
-        </span>
-        <button
-          onClick={clearSession}
-          className="min-h-12 text-sm text-gray-500 underline"
-        >
-          Cerrar sesion
-        </button>
-      </header>
+      <AppHeader
+        subtitle="Panel de analista"
+        homeHref="/volunteer"
+        nav={VOLUNTEER_NAV}
+      />
 
-      <main className="flex flex-1 flex-col md:flex-row">
+      <main className="flex flex-1 flex-col overflow-hidden md:flex-row">
         <div className="relative h-1/2 md:h-full md:flex-1">
           <HeatmapMap
             points={points ?? []}
@@ -72,12 +66,12 @@ export default function VolunteerMapPage() {
             onBoundsChange={handleBoundsChange}
           />
           {isLoading && (
-            <div className="absolute left-2 top-2 rounded bg-white px-3 py-1 text-xs text-gray-500 shadow">
+            <div className="absolute left-3 top-3 rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-sand-600 shadow-md">
               Cargando solicitudes...
             </div>
           )}
         </div>
-        <div className="h-1/2 overflow-y-auto border-t border-gray-200 bg-white md:h-full md:w-80 md:border-l md:border-t-0">
+        <div className="h-1/2 overflow-y-auto border-t border-sand-200 bg-white md:h-full md:w-80 md:border-l md:border-t-0">
           <RequestSidePanel
             item={selected}
             onAccept={handleAccept}

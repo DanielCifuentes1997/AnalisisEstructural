@@ -29,6 +29,11 @@ import { VisitsService } from "./visits.service";
 export class VisitsController {
   constructor(private readonly visitsService: VisitsService) {}
 
+  @Get()
+  listMine(@CurrentUser() user: AccessTokenPayload) {
+    return this.visitsService.listMyVisits(user.sub);
+  }
+
   @Get(":id")
   getDetail(
     @CurrentUser() user: AccessTokenPayload,

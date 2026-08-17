@@ -68,6 +68,16 @@ export class RequestsController {
     return this.requestsService.findOneForCitizen(user.sub, id);
   }
 
+  @Post(":id/cancel")
+  @HttpCode(200)
+  @Roles("CITIZEN")
+  cancel(
+    @CurrentUser() user: AccessTokenPayload,
+    @Param("id", ParseUUIDPipe) id: string,
+  ) {
+    return this.requestsService.cancelForCitizen(user.sub, id);
+  }
+
   @Post(":id/accept")
   @Roles("VOLUNTEER")
   accept(

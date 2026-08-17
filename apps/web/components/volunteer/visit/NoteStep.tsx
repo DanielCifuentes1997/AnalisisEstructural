@@ -57,17 +57,17 @@ export function NoteStep({ onSubmit, isLoading, errorMessage }: NoteStepProps) {
 
   return (
     <Card>
-      <h2 className="mb-2 text-lg font-semibold text-gray-900">
+      <h2 className="mb-2 text-lg font-semibold text-sand-900">
         Nota de la visita
       </h2>
-      <p className="mb-4 text-sm text-gray-600">
+      <p className="mb-4 text-sm text-sand-600">
         Registra lo que observaste por zona o habitacion. Esto no es un
         dictamen oficial, es acompañamiento informal para el ciudadano.
       </p>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         {zones.map((zone, index) => (
-          <div key={index} className="flex flex-col gap-2 rounded-lg border border-gray-200 p-3">
+          <div key={index} className="flex flex-col gap-2 rounded-lg border border-sand-200 p-3">
             <div className="flex items-end gap-2">
               <div className="flex-1">
                 <TextInput
@@ -90,9 +90,9 @@ export function NoteStep({ onSubmit, isLoading, errorMessage }: NoteStepProps) {
             </div>
 
             <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-gray-700">Estado</label>
+              <label className="text-sm font-medium text-sand-700">Estado</label>
               <select
-                className="min-h-12 rounded-lg border border-gray-300 px-4 text-base"
+                className="min-h-12 rounded-lg border border-sand-300 px-4 text-base"
                 value={zone.status}
                 onChange={(e) =>
                   updateZone(index, { status: e.target.value as ZoneStatus })
@@ -117,17 +117,17 @@ export function NoteStep({ onSubmit, isLoading, errorMessage }: NoteStepProps) {
         <button
           type="button"
           onClick={() => setZones((prev) => [...prev, emptyZone()])}
-          className="min-h-12 text-sm text-blue-600 underline"
+          className="min-h-12 text-sm text-brand-700 underline"
         >
           + Agregar otra zona
         </button>
 
         <div className="flex flex-col gap-1">
-          <label className="text-sm font-medium text-gray-700">
+          <label className="text-sm font-medium text-sand-700">
             Comentarios generales (opcional)
           </label>
           <textarea
-            className="min-h-24 rounded-lg border border-gray-300 px-4 py-3 text-base"
+            className="min-h-24 rounded-lg border border-sand-300 px-4 py-3 text-base"
             value={generalComments}
             onChange={(e) => setGeneralComments(e.target.value)}
           />

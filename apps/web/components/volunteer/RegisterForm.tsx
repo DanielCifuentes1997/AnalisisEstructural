@@ -54,7 +54,7 @@ export function RegisterForm({ onSubmit, isLoading, errorMessage }: RegisterForm
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <p className="text-sm text-gray-600">
+      <p className="text-sm text-sand-600">
         No pedimos matricula profesional ni cruce con colegios — esto es
         acompañamiento comunitario informal, no una inspección oficial.
         Cualquier persona con criterio técnico puede ayudar.
@@ -74,11 +74,11 @@ export function RegisterForm({ onSubmit, isLoading, errorMessage }: RegisterForm
       />
 
       <div className="flex flex-col gap-1">
-        <label className="text-sm font-medium text-gray-700">
+        <label className="text-sm font-medium text-sand-700">
           Tu profesion o formacion
         </label>
         <select
-          className="min-h-12 rounded-lg border border-gray-300 px-4 text-base"
+          className="min-h-12 rounded-xl border border-sand-300 bg-white px-4 text-base"
           value={declaredProfession}
           onChange={(e) => setDeclaredProfession(e.target.value)}
         >
@@ -92,7 +92,7 @@ export function RegisterForm({ onSubmit, isLoading, errorMessage }: RegisterForm
       </div>
 
       <div className="flex flex-col gap-1">
-        <label className="text-sm font-medium text-gray-700">
+        <label className="text-sm font-medium text-sand-700">
           Foto de perfil (la vera la persona que ayudes)
         </label>
         <div className="flex items-center gap-4">
@@ -104,7 +104,7 @@ export function RegisterForm({ onSubmit, isLoading, errorMessage }: RegisterForm
               className="h-16 w-16 rounded-full object-cover"
             />
           )}
-          <label className="flex min-h-12 flex-1 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-gray-300 text-sm text-gray-500 hover:bg-gray-50">
+          <label className="flex min-h-12 flex-1 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-sand-300 text-sm text-sand-500 hover:bg-sand-50">
             {uploadPhoto.isPending ? "Subiendo..." : "Elegir foto"}
             <input
               type="file"

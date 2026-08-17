@@ -32,7 +32,7 @@ export function DamagesStep({ value, onChange, onNext, onBack }: DamagesStepProp
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-sm text-gray-600">
+      <p className="text-sm text-sand-600">
         Cuentanos que notas en tu vivienda (marca lo que aplique).
       </p>
 
@@ -44,7 +44,7 @@ export function DamagesStep({ value, onChange, onNext, onBack }: DamagesStepProp
             checked={value.selected.includes(key)}
             onChange={() => toggle(key)}
           />
-          <span className="text-base text-gray-900">{label}</span>
+          <span className="text-base text-sand-900">{label}</span>
         </label>
       ))}
 
@@ -55,12 +55,12 @@ export function DamagesStep({ value, onChange, onNext, onBack }: DamagesStepProp
           checked={showOtrosDetalle}
           onChange={() => toggle(OTROS_KEY)}
         />
-        <span className="text-base text-gray-900">Otros</span>
+        <span className="text-base text-sand-900">Otros</span>
       </label>
 
       {showOtrosDetalle && (
         <textarea
-          className="min-h-16 rounded-lg border border-gray-300 px-4 py-3 text-base"
+          className="min-h-16 rounded-lg border border-sand-300 px-4 py-3 text-base"
           placeholder="Cuentanos que mas notas"
           value={value.otros_detalle}
           onChange={(e) => onChange({ ...value, otros_detalle: e.target.value })}
@@ -68,11 +68,11 @@ export function DamagesStep({ value, onChange, onNext, onBack }: DamagesStepProp
       )}
 
       <div className="flex flex-col gap-1">
-        <label className="text-sm font-medium text-gray-700">
+        <label className="text-sm font-medium text-sand-700">
           Describe el problema con tus palabras
         </label>
         <textarea
-          className="min-h-24 rounded-lg border border-gray-300 px-4 py-3 text-base"
+          className="min-h-24 rounded-lg border border-sand-300 px-4 py-3 text-base"
           value={value.description}
           onChange={(e) => onChange({ ...value, description: e.target.value })}
         />

@@ -93,15 +93,15 @@ export default function NewRequestPage() {
     <main className="mx-auto min-h-screen max-w-sm px-4 py-8">
       <button
         onClick={() => router.push("/dashboard")}
-        className="mb-4 min-h-12 text-sm text-gray-500 underline"
+        className="mb-4 min-h-12 text-sm text-sand-500 underline"
       >
         ← Cancelar
       </button>
 
-      <h1 className="mb-1 text-xl font-semibold text-gray-900">
+      <h1 className="mb-1 text-xl font-semibold text-sand-900">
         {STEP_TITLES[step]}
       </h1>
-      <p className="mb-6 text-sm text-gray-400">
+      <p className="mb-6 text-sm text-sand-500">
         Paso {step + 1} de {STEP_TITLES.length}
       </p>
 

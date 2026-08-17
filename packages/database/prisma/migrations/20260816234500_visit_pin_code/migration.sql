@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Visits" ADD COLUMN "pin_code" TEXT NOT NULL DEFAULT '';
+ALTER TABLE "Visits" ALTER COLUMN "pin_code" DROP DEFAULT;

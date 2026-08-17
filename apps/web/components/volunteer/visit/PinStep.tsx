@@ -21,10 +21,10 @@ export function PinStep({ onSubmit, isLoading, errorMessage }: PinStepProps) {
 
   return (
     <Card>
-      <h2 className="mb-2 text-lg font-semibold text-gray-900">
+      <h2 className="mb-2 text-lg font-semibold text-sand-900">
         Pide el codigo al ciudadano
       </h2>
-      <p className="mb-4 text-sm text-gray-600">
+      <p className="mb-4 text-sm text-sand-600">
         El ciudadano tiene un codigo de 6 digitos en su pantalla. Pidele que
         te lo dicte para confirmar tu presencia.
       </p>

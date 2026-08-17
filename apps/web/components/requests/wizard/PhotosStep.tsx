@@ -70,11 +70,11 @@ export function PhotosStep({ photoUrls, onChange, onNext, onBack }: PhotosStepPr
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-sm text-gray-600">
+      <p className="text-sm text-sand-600">
         Sube fotos del daño (opcional, hasta {MAX_PHOTOS}).
       </p>
 
-      <label className="flex min-h-24 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-gray-300 text-sm text-gray-500 hover:bg-gray-50">
+      <label className="flex min-h-24 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-sand-300 text-sm text-sand-500 hover:bg-sand-50">
         Toca para elegir fotos
         <input
           type="file"
@@ -109,7 +109,7 @@ export function PhotosStep({ photoUrls, onChange, onNext, onBack }: PhotosStepPr
               <button
                 type="button"
                 onClick={() => removePhoto(photo.id)}
-                className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-gray-900 text-xs text-white"
+                className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-sand-900 text-xs text-white"
               >
                 ×
               </button>

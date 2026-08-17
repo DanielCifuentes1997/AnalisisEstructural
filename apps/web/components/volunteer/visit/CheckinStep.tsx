@@ -37,10 +37,10 @@ export function CheckinStep({ onCheckin, isLoading, errorMessage }: CheckinStepP
 
   return (
     <Card>
-      <h2 className="mb-2 text-lg font-semibold text-gray-900">
+      <h2 className="mb-2 text-lg font-semibold text-sand-900">
         Llegaste al sitio?
       </h2>
-      <p className="mb-4 text-sm text-gray-600">
+      <p className="mb-4 text-sm text-sand-600">
         Debes estar a menos de 100 metros de la vivienda para continuar.
         Presiona el boton cuando estes en la puerta.
       </p>

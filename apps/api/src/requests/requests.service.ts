@@ -121,7 +121,10 @@ export class RequestsService {
         visits: {
           orderBy: { created_at: "desc" },
           take: 1,
-          include: { volunteer: { include: { user: true } } },
+          include: {
+            volunteer: { include: { user: true } },
+            visit_note: { include: { zones: true } },
+          },
         },
       },
     });
@@ -145,7 +148,44 @@ export class RequestsService {
           }
         : null;
 
-    return { ...rest, assigned_volunteer };
+    // El PIN solo tiene sentido (y solo debe existir en pantalla) mientras
+    // el voluntario esta en la puerta esperando que se lo dicten.
+    const verification_pin =
+      visit && request.state === "VERIFICATION_PENDING" ? visit.pin_code : null;
+
+    const visit_note = visit?.visit_note
+      ? {
+          general_comments: visit.visit_note.general_comments,
+          created_at: visit.visit_note.created_at,
+          zones: visit.visit_note.zones.map((zone) => ({
+            zone_name: zone.zone_name,
+            status: zone.status,
+            comment: zone.comment,
+          })),
+        }
+      : null;
+
+    return { ...rest, assigned_volunteer, verification_pin, visit_note };
+  }
+
+  async cancelForCitizen(citizenId: string, requestId: string) {
+    const request = await this.prisma.propertyRequests.findUnique({
+      where: { id: requestId },
+    });
+
+    if (!request) {
+      throw new NotFoundException("Solicitud no encontrada");
+    }
+    if (request.citizen_id !== citizenId) {
+      throw new ForbiddenException("Esta solicitud no te pertenece");
+    }
+
+    this.stateMachine.assertTransition(request.state, "CANCELLED");
+
+    return this.prisma.propertyRequests.update({
+      where: { id: requestId },
+      data: { state: "CANCELLED" },
+    });
   }
 
   async getHeatmap(bbox: HeatmapQuery["bbox"]) {

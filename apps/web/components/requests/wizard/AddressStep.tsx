@@ -52,7 +52,7 @@ export function AddressStep({ value, onChange, onNext }: AddressStepProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-sm text-gray-600">
+      <p className="text-sm text-sand-600">
         Escribe la direccion de la vivienda que quieres reportar.
       </p>
 
@@ -94,7 +94,7 @@ export function AddressStep({ value, onChange, onNext }: AddressStepProps) {
           onChange({ ...value, latitude, longitude })
         }
       />
-      <p className="text-xs text-gray-500">
+      <p className="text-xs text-sand-500">
         Si el punto no queda exacto, puedes arrastrar el marcador o tocar el
         mapa para corregirlo.
       </p>

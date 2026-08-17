@@ -23,7 +23,7 @@ export function HousingTypeStep({
 }: HousingTypeStepProps) {
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-sm text-gray-600">¿Que tipo de vivienda es?</p>
+      <p className="text-sm text-sand-600">¿Que tipo de vivienda es?</p>
 
       <div className="grid grid-cols-2 gap-3">
         {OPTIONS.map((option) => (
@@ -33,8 +33,8 @@ export function HousingTypeStep({
             onClick={() => onChange(option.value)}
             className={`min-h-24 rounded-lg border-2 text-base font-medium transition-colors ${
               value === option.value
-                ? "border-blue-600 bg-blue-50 text-blue-700"
-                : "border-gray-300 text-gray-700 hover:bg-gray-50"
+                ? "border-brand-600 bg-brand-50 text-brand-700"
+                : "border-sand-300 text-sand-700 hover:bg-sand-50"
             }`}
           >
             {option.label}

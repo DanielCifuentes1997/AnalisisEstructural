@@ -1,15 +1,20 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { OtpStep } from "../../components/auth/OtpStep";
 import { PhoneStep } from "../../components/auth/PhoneStep";
 import { Card } from "../../components/ui/Card";
+import { LogoLockup } from "../../components/ui/Logo";
+import { Spinner } from "../../components/ui/Spinner";
 import { ApiError } from "../../lib/api-client";
 import { useRequestOtp, useVerifyOtp } from "../../lib/hooks/use-auth";
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const wantsToBeAnalyst = searchParams.get("rol") === "analista";
   const [phoneE164, setPhoneE164] = useState<string | null>(null);
 
   const requestOtp = useRequestOtp();
@@ -27,10 +32,15 @@ export default function LoginPage() {
     verifyOtp.mutate(
       { phone_number: phoneE164, otp_code: code },
       {
-        onSuccess: (data) =>
-          router.push(
-            data.user.role === "VOLUNTEER" ? "/volunteer/map" : "/dashboard",
-          ),
+        onSuccess: (data) => {
+          if (data.user.role === "VOLUNTEER") {
+            router.push("/volunteer");
+            return;
+          }
+          // Quien entro por la puerta de "analista" y todavia no tiene
+          // perfil va directo al registro, no al panel de afectado.
+          router.push(wantsToBeAnalyst ? "/volunteer/register" : "/dashboard");
+        },
       },
     );
   };
@@ -41,14 +51,23 @@ export default function LoginPage() {
     verifyOtp.error instanceof ApiError ? verifyOtp.error.message : undefined;
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
+    <main className="flex min-h-screen flex-col items-center justify-center bg-sand-50 px-4 py-10">
       <div className="w-full max-w-sm">
-        <h1 className="mb-2 text-center text-2xl font-semibold text-gray-900">
-          Acompañamiento Comunitario
+        <div className="mb-8 flex justify-center">
+          <LogoLockup
+            subtitle={
+              wantsToBeAnalyst ? "Ingreso de analistas" : "Ingreso de afectados"
+            }
+          />
+        </div>
+
+        <h1 className="mb-2 text-center text-2xl font-semibold tracking-tight text-sand-900">
+          {wantsToBeAnalyst ? "Ingresa para ayudar" : "Ingresa a tu cuenta"}
         </h1>
-        <p className="mb-6 text-center text-sm text-gray-600">
-          Ingresa tu numero para reportar tu vivienda o ver tus solicitudes.
+        <p className="mb-6 text-center text-sm text-sand-600">
+          Te enviamos un código por mensaje de texto. No necesitas contraseña.
         </p>
+
         <Card>
           {!phoneE164 ? (
             <PhoneStep
@@ -66,7 +85,21 @@ export default function LoginPage() {
             />
           )}
         </Card>
+
+        <p className="mt-6 text-center text-sm">
+          <Link href="/" className="text-sand-500 underline hover:text-sand-900">
+            ← Volver al inicio
+          </Link>
+        </p>
       </div>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<Spinner />}>
+      <LoginContent />
+    </Suspense>
   );
 }

@@ -1,4 +1,9 @@
-import type { Damages, HousingType, RequestState } from "@proyecto/shared-types";
+import type {
+  Damages,
+  HousingType,
+  RequestState,
+  ZoneStatus,
+} from "@proyecto/shared-types";
 
 // El backend guarda photo_urls dentro de damages_json (no tiene columna
 // propia todavia), asi que en las respuestas el shape es mas amplio que
@@ -30,8 +35,34 @@ export interface PropertyRequestListItem {
   updated_at: string;
 }
 
+export interface VisitNoteZone {
+  zone_name: string;
+  status: ZoneStatus;
+  comment: string | null;
+}
+
+export interface VisitNote {
+  general_comments: string | null;
+  created_at: string;
+  zones: VisitNoteZone[];
+}
+
 export interface PropertyRequestDetail extends PropertyRequestListItem {
   assigned_volunteer: AssignedVolunteer | null;
+  // Solo llega cuando el analista ya hizo check-in y espera el PIN.
+  verification_pin: string | null;
+  visit_note: VisitNote | null;
+}
+
+// GET /v1/visits - los casos que este voluntario ya acepto.
+export interface VisitListItem {
+  visit_id: string;
+  request_id: string;
+  created_at: string;
+  reporter_name: string;
+  address_text: string;
+  housing_type: HousingType;
+  state: RequestState;
 }
 
 export interface PropertyRequestCreated extends PropertyRequestListItem {

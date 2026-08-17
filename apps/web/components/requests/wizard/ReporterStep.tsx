@@ -25,11 +25,11 @@ export function ReporterStep({ value, onChange, onNext, onBack }: ReporterStepPr
       />
 
       <div className="flex flex-col gap-1">
-        <span className="text-sm font-medium text-gray-700">Telefono de contacto</span>
-        <div className="min-h-12 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-base text-gray-700">
+        <span className="text-sm font-medium text-sand-700">Telefono de contacto</span>
+        <div className="min-h-12 rounded-lg border border-sand-200 bg-sand-50 px-4 py-3 text-base text-sand-700">
           {phoneNumber}
         </div>
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-sand-500">
           Este es el telefono con el que iniciaste sesion.
         </p>
       </div>

@@ -30,7 +30,7 @@ export class VolunteersService {
       role: "VOLUNTEER",
     };
     const accessToken = await this.jwtService.signAsync(accessPayload, {
-      expiresIn: "15m",
+      expiresIn: "24h",
     });
 
     return { profile, accessToken };

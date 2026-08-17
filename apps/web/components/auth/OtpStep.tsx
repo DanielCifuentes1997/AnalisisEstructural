@@ -28,7 +28,7 @@ export function OtpStep({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <p className="text-sm text-gray-600">
+      <p className="text-sm text-sand-600">
         Enviamos un codigo a <strong>{phoneE164}</strong>
       </p>
       <TextInput
@@ -48,7 +48,7 @@ export function OtpStep({
       <button
         type="button"
         onClick={onBack}
-        className="min-h-12 text-sm text-gray-500 underline"
+        className="min-h-12 text-sm text-sand-500 underline"
       >
         Cambiar numero
       </button>
