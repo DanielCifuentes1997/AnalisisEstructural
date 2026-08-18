@@ -18,6 +18,10 @@ export type UnsubscribePushInput = z.infer<typeof unsubscribePushSchema>;
 
 // Textos del aviso que pide permiso, distintos segun a quien se le
 // muestra: lo que le importa a cada rol no es lo mismo.
+//
+// IMPORTANTE: aqui solo se promete lo que el sistema envia de verdad.
+// Prometer un aviso que nadie dispara es peor que no ofrecerlo, porque
+// la persona deja de revisar la app confiando en algo que no llega.
 export const PUSH_PROMPT_COPY = {
   CITIZEN: {
     title: "Activa las notificaciones",
@@ -26,7 +30,7 @@ export const PUSH_PROMPT_COPY = {
   },
   VOLUNTEER: {
     title: "Activa las notificaciones",
-    body: "Te avisamos cuando alguien te escriba, cuando acepten la fecha que propusiste y cuando haya solicitudes nuevas cerca de ti.",
+    body: "Te avisamos cuando la persona que acompañas te escriba y cuando responda la fecha que le propusiste.",
     cta: "Activar notificaciones",
   },
 } as const;

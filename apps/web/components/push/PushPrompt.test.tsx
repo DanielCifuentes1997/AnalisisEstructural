@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { PUSH_PROMPT_COPY } from "@proyecto/shared-types";
 import { PushPrompt } from "./PushPrompt";
 
 const subscribe = vi.fn();
@@ -32,11 +33,33 @@ describe("PushPrompt: a quien se le muestra y que dice", () => {
     expect(screen.getByText(/tome tu solicitud/i)).toBeInTheDocument();
   });
 
-  it("al analista le habla de casos y mensajes", async () => {
+  it("al analista le habla de mensajes y fechas", async () => {
     render(<PushPrompt role="VOLUNTEER" />);
 
     await screen.findByText(/Activa las notificaciones/i);
-    expect(screen.getByText(/solicitudes nuevas cerca de ti/i)).toBeInTheDocument();
+    expect(screen.getByText(/te escriba/i)).toBeInTheDocument();
+    expect(screen.getByText(/fecha que le propusiste/i)).toBeInTheDocument();
+  });
+
+  /**
+   * Guardia contra un error que ya cometimos tres veces: la interfaz
+   * prometiendo algo que el sistema no hace (el PIN que no llegaba, la
+   * nota que el ciudadano no veia, los avisos de solicitudes cercanas).
+   * Si algun dia se implementa avisar por cercania, se quita de aqui.
+   */
+  it("no promete avisos que el sistema no envia", () => {
+    const NO_IMPLEMENTADO = [
+      /cerca de ti/i,
+      /solicitudes nuevas/i,
+      /por sms/i,
+      /correo/i,
+    ];
+
+    for (const copy of Object.values(PUSH_PROMPT_COPY)) {
+      for (const promesa of NO_IMPLEMENTADO) {
+        expect(copy.body).not.toMatch(promesa);
+      }
+    }
   });
 
   // Si ya las tiene, volver a pedirlas es ruido.
