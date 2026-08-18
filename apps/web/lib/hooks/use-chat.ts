@@ -1,7 +1,12 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { ReleaseVisitInput, SendMessageInput } from "@proyecto/shared-types";
+import type {
+  ProposeVisitDateInput,
+  ReleaseVisitInput,
+  RespondToProposalInput,
+  SendMessageInput,
+} from "@proyecto/shared-types";
 import { apiClient } from "../api-client";
 import { useAuthStore } from "../auth-store";
 
@@ -32,6 +37,43 @@ export function useSendMessage(visitId: string) {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["chat", visitId] });
       void queryClient.invalidateQueries({ queryKey: ["unread"] });
+    },
+  });
+}
+
+export function useProposeVisitDate(visitId: string) {
+  const accessToken = useAuthStore((state) => state.accessToken);
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: ProposeVisitDateInput) =>
+      apiClient.proposeVisitDate(accessToken as string, visitId, input),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["chat", visitId] });
+    },
+  });
+}
+
+export function useRespondToProposal(visitId: string) {
+  const accessToken = useAuthStore((state) => state.accessToken);
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      proposalId,
+      ...input
+    }: RespondToProposalInput & { proposalId: string }) =>
+      apiClient.respondToProposal(
+        accessToken as string,
+        visitId,
+        proposalId,
+        input,
+      ),
+    onSuccess: () => {
+      // Aceptar cambia el estado de la solicitud y la visita, no solo el chat.
+      void queryClient.invalidateQueries({ queryKey: ["chat", visitId] });
+      void queryClient.invalidateQueries({ queryKey: ["requests"] });
+      void queryClient.invalidateQueries({ queryKey: ["visits"] });
     },
   });
 }

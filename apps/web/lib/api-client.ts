@@ -8,7 +8,9 @@ import type {
   CreatePropertyRequestInput,
   RegisterVolunteerInput,
   ReleaseVisitInput,
+  ProposeVisitDateInput,
   ReportAbuseInput,
+  RespondToProposalInput,
   RequestOtpInput,
   ReviewVolunteerInput,
   SendMessageInput,
@@ -278,6 +280,28 @@ export const apiClient = {
       accessToken,
       body: JSON.stringify(input),
     }),
+
+  proposeVisitDate: (
+    accessToken: string,
+    visitId: string,
+    input: ProposeVisitDateInput,
+  ) =>
+    request<unknown>(`/v1/visits/${visitId}/proposals`, {
+      method: "POST",
+      accessToken,
+      body: JSON.stringify(input),
+    }),
+
+  respondToProposal: (
+    accessToken: string,
+    visitId: string,
+    proposalId: string,
+    input: RespondToProposalInput,
+  ) =>
+    request<unknown>(
+      `/v1/visits/${visitId}/proposals/${proposalId}/respond`,
+      { method: "POST", accessToken, body: JSON.stringify(input) },
+    ),
 
   reportAbuse: (accessToken: string, visitId: string, input: ReportAbuseInput) =>
     request<unknown>(`/v1/visits/${visitId}/report`, {

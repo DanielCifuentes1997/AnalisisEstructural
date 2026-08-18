@@ -1,5 +1,7 @@
 import type {
   AbuseReason,
+  MessageKind,
+  ProposalStatus,
   Damages,
   HousingType,
   Profession,
@@ -196,6 +198,11 @@ export interface VisitDetail {
 // ---------- Chat entre ciudadano y analista ----------
 
 export interface ChatMessage {
+  kind: MessageKind;
+  proposed_date: string | null;
+  proposal_status: ProposalStatus | null;
+  // Solo la otra parte puede responder una propuesta viva.
+  can_respond: boolean;
   id: string;
   body: string;
   sender_role: Role;
@@ -205,6 +212,8 @@ export interface ChatMessage {
 }
 
 export interface Conversation {
+  scheduled_at: string | null;
+  can_propose_date: boolean;
   visit_id: string;
   request_state: RequestState;
   is_closed: boolean;

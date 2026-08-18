@@ -4,17 +4,28 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import type {
+  ProposeVisitDateInput,
   ReportAbuseInput,
+  RespondToProposalInput,
   SendMessageInput,
 } from "@proyecto/shared-types";
 import { PrismaService } from "../prisma/prisma.service";
+import { StorageService } from "../storage/storage.service";
+import { RequestStateMachine } from "../workflow/request-state-machine.service";
 
 // Estados en los que ya no tiene sentido seguir escribiendo.
 const CLOSED_STATES = ["COMPLETED", "CANCELLED"];
 
 @Injectable()
 export class ChatService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly stateMachine: RequestStateMachine,
+    private readonly storage: StorageService,
+  ) {}
+
+  // Proponer fecha solo tiene sentido antes de que el analista llegue.
+  private static readonly SCHEDULABLE_STATES = ["ASSIGNED", "SCHEDULED"];
 
   /**
    * Solo el ciudadano dueño de la solicitud y el analista asignado
@@ -62,6 +73,11 @@ export class ChatService {
     const isClosed =
       CLOSED_STATES.includes(visit.request.state) || visit.released_at !== null;
 
+    // Enlace firmado y temporal: solo para el ciudadano de este caso.
+    const counterpartPhoto = isCitizen
+      ? await this.storage.resolveVolunteerPhotoUrl(visit.volunteer.photo_url)
+      : null;
+
     return {
       visit_id: visit.id,
       request_state: visit.request.state,
@@ -70,11 +86,12 @@ export class ChatService {
       // ciudadano no viaja nunca hacia el analista: para evitar ese
       // intercambio existe este chat.
       counterpart: isCitizen
-        ? {
-            name: visit.volunteer.full_name,
-            photo_url: visit.volunteer.photo_url as string | null,
-          }
+        ? { name: visit.volunteer.full_name, photo_url: counterpartPhoto }
         : { name: visit.request.reporter_name, photo_url: null },
+      scheduled_at: visit.scheduled_at,
+      can_propose_date:
+        !isClosed &&
+        ChatService.SCHEDULABLE_STATES.includes(visit.request.state),
       messages: messages.map((m) => ({
         id: m.id,
         body: m.body,
@@ -82,8 +99,128 @@ export class ChatService {
         is_mine: m.sender_id === userId,
         created_at: m.created_at,
         read_at: m.read_at,
+        kind: m.kind,
+        proposed_date: m.proposed_date,
+        proposal_status: m.proposal_status,
+        // Solo la otra parte puede responder una propuesta viva.
+        can_respond:
+          m.kind === "DATE_PROPOSAL" &&
+          m.proposal_status === "PENDING" &&
+          m.sender_id !== userId,
       })),
     };
+  }
+
+  /**
+   * Propone una fecha para la visita. Cualquiera de los dos puede
+   * hacerlo: la negociacion sigue siendo por chat y esto solo captura el
+   * acuerdo. Si ya habia propuestas sin responder, quedan sin vigencia.
+   */
+  async proposeVisitDate(
+    userId: string,
+    visitId: string,
+    input: ProposeVisitDateInput,
+  ) {
+    const { visit, isCitizen } = await this.getParticipantContext(
+      userId,
+      visitId,
+    );
+
+    if (visit.released_at) {
+      throw new ForbiddenException("Este caso fue liberado");
+    }
+    if (!ChatService.SCHEDULABLE_STATES.includes(visit.request.state)) {
+      throw new ForbiddenException(
+        "Ya no se puede acordar fecha para esta visita",
+      );
+    }
+
+    const [, proposal] = await this.prisma.$transaction([
+      this.prisma.messages.updateMany({
+        where: {
+          visit_id: visitId,
+          kind: "DATE_PROPOSAL",
+          proposal_status: "PENDING",
+        },
+        data: { proposal_status: "SUPERSEDED" },
+      }),
+      this.prisma.messages.create({
+        data: {
+          visit_id: visitId,
+          sender_id: userId,
+          sender_role: isCitizen ? "CITIZEN" : "VOLUNTEER",
+          kind: "DATE_PROPOSAL",
+          proposed_date: new Date(input.proposed_date),
+          proposal_status: "PENDING",
+          body: input.note?.trim() || "",
+        },
+      }),
+    ]);
+
+    return proposal;
+  }
+
+  /**
+   * "Me sirve" / "No puedo". Aceptar fija la fecha y pasa la solicitud a
+   * SCHEDULED; rechazar no rompe nada, la conversacion sigue y cualquiera
+   * puede proponer otra.
+   */
+  async respondToProposal(
+    userId: string,
+    visitId: string,
+    proposalId: string,
+    input: RespondToProposalInput,
+  ) {
+    const { visit } = await this.getParticipantContext(userId, visitId);
+
+    const proposal = await this.prisma.messages.findUnique({
+      where: { id: proposalId },
+    });
+    if (!proposal || proposal.visit_id !== visitId || proposal.kind !== "DATE_PROPOSAL") {
+      throw new NotFoundException("Propuesta no encontrada");
+    }
+    if (proposal.proposal_status !== "PENDING") {
+      throw new ForbiddenException("Esta propuesta ya no esta vigente");
+    }
+    // Quien propone no puede aceptarse a si mismo.
+    if (proposal.sender_id === userId) {
+      throw new ForbiddenException("Debe responder la otra persona");
+    }
+
+    if (!input.accept) {
+      return this.prisma.messages.update({
+        where: { id: proposalId },
+        data: { proposal_status: "DECLINED" },
+      });
+    }
+
+    // Si la solicitud ya estaba SCHEDULED solo cambia la fecha: la
+    // maquina de estados no admite SCHEDULED -> SCHEDULED.
+    const needsTransition = visit.request.state === "ASSIGNED";
+    if (needsTransition) {
+      this.stateMachine.assertTransition(visit.request.state, "SCHEDULED");
+    }
+
+    const [accepted] = await this.prisma.$transaction([
+      this.prisma.messages.update({
+        where: { id: proposalId },
+        data: { proposal_status: "ACCEPTED" },
+      }),
+      this.prisma.visits.update({
+        where: { id: visitId },
+        data: { scheduled_at: proposal.proposed_date },
+      }),
+      ...(needsTransition
+        ? [
+            this.prisma.propertyRequests.update({
+              where: { id: visit.request_id },
+              data: { state: "SCHEDULED" },
+            }),
+          ]
+        : []),
+    ]);
+
+    return accepted;
   }
 
   async sendMessage(userId: string, visitId: string, input: SendMessageInput) {
@@ -196,10 +333,14 @@ export class ChatService {
       volunteer_name: visit.volunteer.full_name,
       request_state: visit.request.state,
       released_at: visit.released_at,
+      scheduled_at: visit.scheduled_at,
       messages: messages.map((m) => ({
         id: m.id,
         body: m.body,
         sender_role: m.sender_role,
+        kind: m.kind,
+        proposed_date: m.proposed_date,
+        proposal_status: m.proposal_status,
         author:
           m.sender_role === "CITIZEN"
             ? visit.request.reporter_name

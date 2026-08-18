@@ -7,7 +7,19 @@ import type { RequestState } from "@proyecto/shared-types";
 import type { PrismaService } from "../prisma/prisma.service";
 import { RequestStateMachine } from "../workflow/request-state-machine.service";
 import { createPrismaMock, type PrismaMock } from "../test-utils/prisma-mock";
+import type { StorageService } from "../storage/storage.service";
 import { RequestsService } from "./requests.service";
+
+
+/** StorageService simulado: las fotos privadas se firman, no se leen. */
+const createStorageMock = () => ({
+  resolveVolunteerPhotoUrl: jest
+    .fn()
+    .mockImplementation(async (stored: string | null) =>
+      stored ? `https://firmada.example/${stored}?token=abc` : null,
+    ),
+  createSignedUploadUrl: jest.fn(),
+});
 
 const CITIZEN_ID = "user-citizen";
 const REQUEST_ID = "req-1";
@@ -40,13 +52,16 @@ const requestWithVisit = (state: RequestState, visitOverrides = {}) => ({
 
 describe("RequestsService", () => {
   let prisma: PrismaMock;
+  let storage: ReturnType<typeof createStorageMock>;
   let service: RequestsService;
 
   beforeEach(() => {
     prisma = createPrismaMock();
+    storage = createStorageMock();
     service = new RequestsService(
       prisma as unknown as PrismaService,
       new RequestStateMachine(),
+      storage as unknown as StorageService,
     );
   });
 
@@ -89,7 +104,8 @@ describe("RequestsService", () => {
 
       expect(result.assigned_volunteer).toEqual({
         full_name: "Elena Vargas",
-        photo_url: "https://example.com/e.jpg",
+        // Firmada y temporal: el bucket de fotos de analistas es privado.
+        photo_url: "https://firmada.example/https://example.com/e.jpg?token=abc",
         phone_number: "+573001112233",
         is_verified: true,
       });

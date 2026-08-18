@@ -46,6 +46,23 @@ enum RequestState {
   REASSIGNMENT_REQUIRED
 }
 
+// Una burbuja del chat puede ser texto normal o una propuesta de fecha
+// para la visita. Van en el mismo hilo para que la negociacion se lea
+// completa y en orden.
+enum MessageKind {
+  TEXT
+  DATE_PROPOSAL
+}
+
+// SUPERSEDED: quedo sin vigencia porque alguno propuso otra fecha
+// despues, sin haber respondido a esta.
+enum ProposalStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  SUPERSEDED
+}
+
 enum AbuseReason {
   PIDIO_DINERO
   PIDIO_DATOS_PERSONALES
@@ -166,6 +183,9 @@ model Visits {
   // rescatarlo es una señal de que no cumplio.
   released_at      DateTime?
   released_by_role Role?
+  // Fecha acordada por las dos partes en el chat. Es lo que distingue
+  // "ya cuadraron para el martes" de "nadie ha hecho nada".
+  scheduled_at     DateTime?
 
   request          PropertyRequests  @relation(fields: [request_id], references: [id])
   volunteer        VolunteerProfiles @relation(fields: [volunteer_id], references: [id])
@@ -203,6 +223,10 @@ model Messages {
   body        String
   read_at     DateTime?
   created_at  DateTime @default(now())
+
+  kind            MessageKind     @default(TEXT)
+  proposed_date   DateTime?
+  proposal_status ProposalStatus?
 
   visit       Visits   @relation(fields: [visit_id], references: [id])
   sender      Users    @relation(fields: [sender_id], references: [id])

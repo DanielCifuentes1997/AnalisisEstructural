@@ -6,6 +6,7 @@
  */
 import {
   createPropertyRequestSchema,
+  proposeVisitDateSchema,
   registerVolunteerSchema,
   reportAbuseSchema,
   requiresProfessionalLicense,
@@ -94,6 +95,18 @@ describe("Matricula profesional segun profesion", () => {
     });
 
     expect(result.success).toBe(false);
+  });
+
+  // El bucket de fotos de analistas es privado: se guarda la ruta dentro
+  // del bucket, no una URL publica.
+  it("acepta una ruta de almacenamiento como foto", () => {
+    const result = registerVolunteerSchema.safeParse({
+      ...baseVolunteer,
+      photo_url: "perfiles/8f3a-2b19.jpg",
+      declared_profession: "CONSTRUCTOR",
+    });
+
+    expect(result.success).toBe(true);
   });
 
   it("editar el perfil mantiene la exigencia de matricula", () => {
@@ -215,5 +228,48 @@ describe("Mensajes del chat", () => {
 
     expect(result.success).toBe(true);
     if (result.success) expect(result.data.body).toBe("Buenas tardes");
+  });
+});
+
+describe("Propuesta de fecha para la visita", () => {
+  const inDays = (days: number) =>
+    new Date(Date.now() + days * 24 * 3600_000).toISOString();
+
+  it("acepta una fecha proxima", () => {
+    expect(
+      proposeVisitDateSchema.safeParse({ proposed_date: inDays(2) }).success,
+    ).toBe(true);
+  });
+
+  it("rechaza una fecha que ya paso", () => {
+    const result = proposeVisitDateSchema.safeParse({
+      proposed_date: inDays(-1),
+    });
+
+    expect(result.success).toBe(false);
+    expect(JSON.stringify(result)).toMatch(/paso/i);
+  });
+
+  // Mas alla de un mes deja de ser "cuadrar una visita" y casi siempre
+  // es un error de digitacion del año.
+  it("rechaza una fecha demasiado lejana", () => {
+    expect(
+      proposeVisitDateSchema.safeParse({ proposed_date: inDays(60) }).success,
+    ).toBe(false);
+  });
+
+  it("acepta una nota opcional junto a la fecha", () => {
+    const result = proposeVisitDateSchema.safeParse({
+      proposed_date: inDays(1),
+      note: "Mejor en la mañana",
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("rechaza una fecha sin formato valido", () => {
+    expect(
+      proposeVisitDateSchema.safeParse({ proposed_date: "el viernes" }).success,
+    ).toBe(false);
   });
 });

@@ -1,7 +1,20 @@
 import { ForbiddenException, NotFoundException } from "@nestjs/common";
 import type { PrismaService } from "../prisma/prisma.service";
 import { createPrismaMock, type PrismaMock } from "../test-utils/prisma-mock";
+import { RequestStateMachine } from "../workflow/request-state-machine.service";
+import type { StorageService } from "../storage/storage.service";
 import { ChatService } from "./chat.service";
+
+
+/** StorageService simulado: las fotos privadas se firman, no se leen. */
+const createStorageMock = () => ({
+  resolveVolunteerPhotoUrl: jest
+    .fn()
+    .mockImplementation(async (stored: string | null) =>
+      stored ? `https://firmada.example/${stored}?token=abc` : null,
+    ),
+  createSignedUploadUrl: jest.fn(),
+});
 
 const CITIZEN_ID = "user-citizen";
 const VOLUNTEER_USER_ID = "user-vol";
@@ -25,11 +38,17 @@ const visitFixture = (overrides: Record<string, unknown> = {}) => ({
 
 describe("ChatService", () => {
   let prisma: PrismaMock;
+  let storage: ReturnType<typeof createStorageMock>;
   let service: ChatService;
 
   beforeEach(() => {
     prisma = createPrismaMock();
-    service = new ChatService(prisma as unknown as PrismaService);
+    storage = createStorageMock();
+    service = new ChatService(
+      prisma as unknown as PrismaService,
+      new RequestStateMachine(),
+      storage as unknown as StorageService,
+    );
     prisma.visits.findUnique.mockResolvedValue(visitFixture());
     prisma.messages.findMany.mockResolvedValue([]);
     prisma.messages.updateMany.mockResolvedValue({ count: 0 });
@@ -83,7 +102,11 @@ describe("ChatService", () => {
       const conversation = await service.getConversation(CITIZEN_ID, VISIT_ID);
 
       expect(conversation.counterpart.name).toBe("Elena Vargas");
-      expect(conversation.counterpart.photo_url).toContain("elena.jpg");
+      // Llega firmada, no como URL directa del bucket.
+      expect(conversation.counterpart.photo_url).toContain("firmada.example");
+      expect(storage.resolveVolunteerPhotoUrl).toHaveBeenCalledWith(
+        "https://example.com/elena.jpg",
+      );
     });
   });
 
@@ -235,6 +258,189 @@ describe("ChatService", () => {
 
       await expect(
         service.getConversationForAdmin(VISIT_ID),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
+
+  describe("agendar la visita", () => {
+    const FUTURE = new Date(Date.now() + 3 * 24 * 3600_000).toISOString();
+
+    beforeEach(() => {
+      prisma.messages.create.mockResolvedValue({ id: "prop-1" });
+      prisma.messages.updateMany.mockResolvedValue({ count: 0 });
+      prisma.messages.update.mockResolvedValue({ id: "prop-1" });
+      prisma.visits.update.mockResolvedValue({ id: VISIT_ID });
+    });
+
+    it("cualquiera de los dos puede proponer una fecha", async () => {
+      await service.proposeVisitDate(CITIZEN_ID, VISIT_ID, {
+        proposed_date: FUTURE,
+      });
+      await service.proposeVisitDate(VOLUNTEER_USER_ID, VISIT_ID, {
+        proposed_date: FUTURE,
+      });
+
+      const roles = prisma.messages.create.mock.calls.map(
+        (c) => c[0].data.sender_role,
+      );
+      expect(roles).toEqual(["CITIZEN", "VOLUNTEER"]);
+    });
+
+    // Si alguien propone otra fecha sin responder la anterior, la vieja
+    // deja de estar vigente: si no, quedarian dos acuerdos posibles.
+    it("una propuesta nueva deja sin vigencia las anteriores", async () => {
+      await service.proposeVisitDate(CITIZEN_ID, VISIT_ID, {
+        proposed_date: FUTURE,
+      });
+
+      expect(prisma.messages.updateMany).toHaveBeenCalledWith({
+        where: {
+          visit_id: VISIT_ID,
+          kind: "DATE_PROPOSAL",
+          proposal_status: "PENDING",
+        },
+        data: { proposal_status: "SUPERSEDED" },
+      });
+    });
+
+    it("no se puede proponer despues del check-in", async () => {
+      prisma.visits.findUnique.mockResolvedValue(
+        visitFixture({
+          request: {
+            citizen_id: CITIZEN_ID,
+            reporter_name: "Rosa",
+            state: "VERIFICATION_PENDING",
+          },
+        }),
+      );
+
+      await expect(
+        service.proposeVisitDate(CITIZEN_ID, VISIT_ID, { proposed_date: FUTURE }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it("aceptar fija la fecha y pasa la solicitud a SCHEDULED", async () => {
+      prisma.messages.findUnique.mockResolvedValue({
+        id: "prop-1",
+        visit_id: VISIT_ID,
+        kind: "DATE_PROPOSAL",
+        proposal_status: "PENDING",
+        proposed_date: new Date(FUTURE),
+        sender_id: VOLUNTEER_USER_ID,
+      });
+
+      await service.respondToProposal(CITIZEN_ID, VISIT_ID, "prop-1", {
+        accept: true,
+      });
+
+      expect(prisma.visits.update).toHaveBeenCalledWith({
+        where: { id: VISIT_ID },
+        data: { scheduled_at: new Date(FUTURE) },
+      });
+      expect(prisma.propertyRequests.update).toHaveBeenCalledWith({
+        where: { id: undefined },
+        data: { state: "SCHEDULED" },
+      });
+    });
+
+    it("rechazar no rompe nada: la conversacion sigue", async () => {
+      prisma.messages.findUnique.mockResolvedValue({
+        id: "prop-1",
+        visit_id: VISIT_ID,
+        kind: "DATE_PROPOSAL",
+        proposal_status: "PENDING",
+        proposed_date: new Date(FUTURE),
+        sender_id: VOLUNTEER_USER_ID,
+      });
+
+      await service.respondToProposal(CITIZEN_ID, VISIT_ID, "prop-1", {
+        accept: false,
+      });
+
+      expect(prisma.messages.update).toHaveBeenCalledWith({
+        where: { id: "prop-1" },
+        data: { proposal_status: "DECLINED" },
+      });
+      expect(prisma.visits.update).not.toHaveBeenCalled();
+      expect(prisma.propertyRequests.update).not.toHaveBeenCalled();
+    });
+
+    it("quien propone no puede aceptarse a si mismo", async () => {
+      prisma.messages.findUnique.mockResolvedValue({
+        id: "prop-1",
+        visit_id: VISIT_ID,
+        kind: "DATE_PROPOSAL",
+        proposal_status: "PENDING",
+        proposed_date: new Date(FUTURE),
+        sender_id: CITIZEN_ID,
+      });
+
+      await expect(
+        service.respondToProposal(CITIZEN_ID, VISIT_ID, "prop-1", {
+          accept: true,
+        }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it("no se puede responder una propuesta ya vencida", async () => {
+      prisma.messages.findUnique.mockResolvedValue({
+        id: "prop-1",
+        visit_id: VISIT_ID,
+        kind: "DATE_PROPOSAL",
+        proposal_status: "SUPERSEDED",
+        proposed_date: new Date(FUTURE),
+        sender_id: VOLUNTEER_USER_ID,
+      });
+
+      await expect(
+        service.respondToProposal(CITIZEN_ID, VISIT_ID, "prop-1", {
+          accept: true,
+        }),
+      ).rejects.toThrow(/vigente/);
+    });
+
+    // SCHEDULED -> SCHEDULED no existe en la maquina de estados: al
+    // reagendar solo cambia la fecha.
+    it("reagendar sobre una visita ya agendada solo cambia la fecha", async () => {
+      prisma.visits.findUnique.mockResolvedValue(
+        visitFixture({
+          request: {
+            citizen_id: CITIZEN_ID,
+            reporter_name: "Rosa",
+            state: "SCHEDULED",
+          },
+        }),
+      );
+      prisma.messages.findUnique.mockResolvedValue({
+        id: "prop-2",
+        visit_id: VISIT_ID,
+        kind: "DATE_PROPOSAL",
+        proposal_status: "PENDING",
+        proposed_date: new Date(FUTURE),
+        sender_id: VOLUNTEER_USER_ID,
+      });
+
+      await service.respondToProposal(CITIZEN_ID, VISIT_ID, "prop-2", {
+        accept: true,
+      });
+
+      expect(prisma.visits.update).toHaveBeenCalled();
+      expect(prisma.propertyRequests.update).not.toHaveBeenCalled();
+    });
+
+    it("404 si la propuesta no pertenece a esta conversacion", async () => {
+      prisma.messages.findUnique.mockResolvedValue({
+        id: "prop-1",
+        visit_id: "otra-visita",
+        kind: "DATE_PROPOSAL",
+        proposal_status: "PENDING",
+        sender_id: VOLUNTEER_USER_ID,
+      });
+
+      await expect(
+        service.respondToProposal(CITIZEN_ID, VISIT_ID, "prop-1", {
+          accept: true,
+        }),
       ).rejects.toBeInstanceOf(NotFoundException);
     });
   });

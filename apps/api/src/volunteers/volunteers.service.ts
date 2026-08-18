@@ -13,6 +13,7 @@ import type {
 import { requiresProfessionalLicense } from "@proyecto/shared-types";
 import { AuditService } from "../audit/audit.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { StorageService } from "../storage/storage.service";
 import type { AccessTokenPayload } from "../auth/types/jwt-payload.interface";
 
 @Injectable()
@@ -21,6 +22,7 @@ export class VolunteersService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly audit: AuditService,
+    private readonly storage: StorageService,
   ) {}
 
   /** Perfil propio del analista, con los avisos que el admin le dejo. */
@@ -42,7 +44,7 @@ export class VolunteersService {
       id_document_number: profile.id_document_number,
       declared_profession: profile.declared_profession,
       professional_license: profile.professional_license,
-      photo_url: profile.photo_url,
+      photo_url: await this.storage.resolveVolunteerPhotoUrl(profile.photo_url),
       phone_number: profile.user.phone_number,
       verification_status: profile.verification_status,
       is_active: profile.is_active,

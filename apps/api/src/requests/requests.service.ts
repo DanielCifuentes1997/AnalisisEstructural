@@ -10,6 +10,7 @@ import type {
   HeatmapQuery,
 } from "@proyecto/shared-types";
 import { PrismaService } from "../prisma/prisma.service";
+import { StorageService } from "../storage/storage.service";
 import { RequestStateMachine } from "../workflow/request-state-machine.service";
 
 interface PropertyRequestRow {
@@ -43,6 +44,7 @@ export class RequestsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly stateMachine: RequestStateMachine,
+    private readonly storage: StorageService,
   ) {}
 
   async create(citizenId: string, input: CreatePropertyRequestInput) {
@@ -141,11 +143,20 @@ export class RequestsService {
 
     const { visits, ...rest } = request;
     const visit = visits[0];
+    // La foto del analista vive en un bucket privado: se firma un enlace
+    // temporal solo para el ciudadano que tiene el caso asignado.
+    const canSeeVolunteer =
+      visit !== undefined &&
+      RequestsService.VOLUNTEER_REVEALED_STATES.includes(request.state);
+    const volunteerPhoto = canSeeVolunteer
+      ? await this.storage.resolveVolunteerPhotoUrl(visit.volunteer.photo_url)
+      : null;
+
     const assigned_volunteer =
       visit && RequestsService.VOLUNTEER_REVEALED_STATES.includes(request.state)
         ? {
             full_name: visit.volunteer.full_name,
-            photo_url: visit.volunteer.photo_url,
+            photo_url: volunteerPhoto,
             phone_number: visit.volunteer.user.phone_number,
             // Solo el hecho de estar verificado. La matricula y la cedula
             // son datos internos del admin y nunca salen por aqui.

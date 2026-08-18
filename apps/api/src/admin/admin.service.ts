@@ -10,6 +10,7 @@ import type {
 import { AuditService } from "../audit/audit.service";
 import { ChatService } from "../chat/chat.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { StorageService } from "../storage/storage.service";
 import { RequestStateMachine } from "../workflow/request-state-machine.service";
 
 interface VisitPerformanceRow {
@@ -77,6 +78,7 @@ export class AdminService {
     private readonly audit: AuditService,
     private readonly stateMachine: RequestStateMachine,
     private readonly chat: ChatService,
+    private readonly storage: StorageService,
   ) {}
 
   /**
@@ -286,15 +288,17 @@ export class AdminService {
     });
 
     // Es la unica respuesta del sistema que expone la matricula y la
-    // cedula: existe para que el admin pueda verificarlas a mano.
-    return volunteers.map((volunteer) => ({
+    // cedula: existe para que el admin pueda verificarlas a mano. La foto
+    // tambien va firmada aqui, porque su bucket es privado.
+    return Promise.all(
+      volunteers.map(async (volunteer) => ({
       id: volunteer.id,
       user_id: volunteer.user_id,
       full_name: volunteer.full_name,
       id_document_number: volunteer.id_document_number,
       declared_profession: volunteer.declared_profession,
       professional_license: volunteer.professional_license,
-      photo_url: volunteer.photo_url,
+      photo_url: await this.storage.resolveVolunteerPhotoUrl(volunteer.photo_url),
       phone_number: volunteer.user.phone_number,
       user_status: volunteer.user.status,
       is_active: volunteer.is_active,
@@ -308,7 +312,8 @@ export class AdminService {
         0,
       ),
       created_at: volunteer.created_at,
-    }));
+      })),
+    );
   }
 
   async reviewVolunteer(

@@ -3,8 +3,19 @@ import { DATA_POLICY_VERSION } from "@proyecto/shared-types";
 import { LogoLockup } from "../../components/ui/Logo";
 
 // Borrador redactado siguiendo los requisitos de la Ley 1581 de 2012 y
-// el Decreto 1377 de 2013. Los campos entre corchetes los debe llenar el
-// responsable, y un abogado deberia revisarlo antes de operar de verdad.
+// el Decreto 1377 de 2013. Un abogado deberia revisarlo antes de operar
+// de verdad.
+//
+// Los datos del responsable se leen del entorno, no van escritos aqui:
+// asi no quedan en el repositorio. La ley exige publicar nombre,
+// domicilio y un canal de contacto; NO exige el documento de identidad
+// del responsable, y por eso no se pide ni se muestra en ninguna parte.
+const RESPONSABLE = {
+  nombre: process.env.NEXT_PUBLIC_RESPONSABLE_NOMBRE ?? "[pendiente]",
+  ciudad: process.env.NEXT_PUBLIC_RESPONSABLE_CIUDAD ?? "[pendiente]",
+  correo: process.env.NEXT_PUBLIC_RESPONSABLE_CORREO ?? "[pendiente]",
+};
+
 export const metadata = {
   title: "Política de tratamiento de datos",
 };
@@ -28,13 +39,20 @@ export default function DataPolicyPage() {
         <div className="flex flex-col gap-6 text-sm leading-relaxed text-sand-700">
           <Section title="1. Quién responde por tus datos">
             <p>
-              <Placeholder>[Razón social del responsable]</Placeholder>, con
-              NIT <Placeholder>[NIT]</Placeholder> y domicilio en{" "}
-              <Placeholder>[dirección]</Placeholder>, es el responsable del
-              tratamiento de los datos personales recogidos en esta
-              plataforma. Puedes contactarnos en{" "}
-              <Placeholder>[correo]</Placeholder> o al{" "}
-              <Placeholder>[teléfono]</Placeholder>.
+              <strong>{RESPONSABLE.nombre}</strong>, con domicilio en{" "}
+              {RESPONSABLE.ciudad}, es el responsable del tratamiento de los
+              datos personales recogidos en esta plataforma.
+            </p>
+            <p className="mt-2">
+              Canal de contacto para cualquier asunto relacionado con tus
+              datos:{" "}
+              <a
+                href={`mailto:${RESPONSABLE.correo}`}
+                className="font-medium text-brand-700 underline"
+              >
+                {RESPONSABLE.correo}
+              </a>
+              .
             </p>
           </Section>
 
@@ -135,7 +153,13 @@ export default function DataPolicyPage() {
             </ul>
             <p className="mt-2">
               Para ejercerlos, escríbenos a{" "}
-              <Placeholder>[correo]</Placeholder>. Respondemos las consultas en
+              <a
+                href={`mailto:${RESPONSABLE.correo}`}
+                className="font-medium text-brand-700 underline"
+              >
+                {RESPONSABLE.correo}
+              </a>
+              . Respondemos las consultas en
               un máximo de diez (10) días hábiles y los reclamos en quince (15)
               días hábiles, conforme a la ley.
             </p>
@@ -203,10 +227,3 @@ function Section({
 }
 
 // Resalta lo que el responsable todavia tiene que completar.
-function Placeholder({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="rounded bg-amber-100 px-1.5 py-0.5 font-medium text-amber-900">
-      {children}
-    </span>
-  );
-}

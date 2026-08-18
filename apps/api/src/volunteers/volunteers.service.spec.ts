@@ -11,7 +11,19 @@ import {
   createPrismaMock,
   type PrismaMock,
 } from "../test-utils/prisma-mock";
+import type { StorageService } from "../storage/storage.service";
 import { VolunteersService } from "./volunteers.service";
+
+
+/** StorageService simulado: las fotos privadas se firman, no se leen. */
+const createStorageMock = () => ({
+  resolveVolunteerPhotoUrl: jest
+    .fn()
+    .mockImplementation(async (stored: string | null) =>
+      stored ? `https://firmada.example/${stored}?token=abc` : null,
+    ),
+  createSignedUploadUrl: jest.fn(),
+});
 
 const USER_ID = "user-vol";
 
@@ -48,6 +60,7 @@ describe("VolunteersService", () => {
       prisma as unknown as PrismaService,
       { signAsync: jest.fn().mockResolvedValue("token") } as unknown as JwtService,
       audit as unknown as AuditService,
+      createStorageMock() as unknown as StorageService,
     );
   });
 

@@ -47,7 +47,15 @@ export const registerVolunteerSchema = z
       .max(20, "Numero de documento invalido"),
     declared_profession: professionSchema,
     professional_license: z.string().max(40).optional(),
-    photo_url: z.string().url("Sube tu foto de perfil"),
+    // Desde que el bucket de fotos de analistas es privado, esto guarda
+    // la RUTA dentro del bucket, no una URL: el enlace se firma al
+    // momento de mostrarla. Se aceptan URLs completas solo por las fotos
+    // que quedaron de cuando el bucket era publico.
+    photo_url: z
+      .string()
+      .trim()
+      .min(3, "Sube tu foto de perfil")
+      .max(500),
   })
   .superRefine((value, ctx) => {
     if (!requiresProfessionalLicense(value.declared_profession)) return;

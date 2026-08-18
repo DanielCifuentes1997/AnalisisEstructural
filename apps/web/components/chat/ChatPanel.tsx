@@ -7,6 +7,11 @@ import { useConversation, useSendMessage } from "../../lib/hooks/use-chat";
 import { Button } from "../ui/Button";
 import { Spinner } from "../ui/Spinner";
 import { ReportAnalystDialog } from "./ReportAnalystDialog";
+import {
+  formatVisitDate,
+  ProposalBubble,
+  ProposeDateForm,
+} from "./VisitDateProposal";
 
 interface ChatPanelProps {
   visitId: string;
@@ -67,6 +72,12 @@ export function ChatPanel({ visitId, canReport = false }: ChatPanelProps) {
         </div>
       </div>
 
+      {conversation.scheduled_at && (
+        <p className="border-b border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-medium capitalize text-emerald-900">
+          📅 Visita acordada: {formatVisitDate(conversation.scheduled_at)}
+        </p>
+      )}
+
       {/* Aviso fijo: es la unica defensa visible contra la estafa. */}
       <p className="border-b border-amber-200 bg-amber-50 px-4 py-2.5 text-xs leading-relaxed text-amber-900">
         ⚠ {CHAT_SAFETY_NOTICE}
@@ -78,7 +89,14 @@ export function ChatPanel({ visitId, canReport = false }: ChatPanelProps) {
             Todavía no hay mensajes. Escribe el primero para acordar la visita.
           </p>
         )}
-        {conversation.messages.map((message) => (
+        {conversation.messages.map((message) =>
+          message.kind === "DATE_PROPOSAL" ? (
+            <ProposalBubble
+              key={message.id}
+              message={message}
+              visitId={visitId}
+            />
+          ) : (
           <div
             key={message.id}
             className={`max-w-[85%] rounded-2xl px-3.5 py-2 ${
@@ -101,7 +119,8 @@ export function ChatPanel({ visitId, canReport = false }: ChatPanelProps) {
               })}
             </p>
           </div>
-        ))}
+          ),
+        )}
         <div ref={bottomRef} />
       </div>
 
@@ -120,6 +139,11 @@ export function ChatPanel({ visitId, canReport = false }: ChatPanelProps) {
         <div className="border-t border-sand-200 p-3">
           {errorMessage && (
             <p className="mb-2 text-sm text-red-600">{errorMessage}</p>
+          )}
+          {conversation.can_propose_date && (
+            <div className="mb-2 flex">
+              <ProposeDateForm visitId={visitId} />
+            </div>
           )}
           <div className="flex gap-2">
             <textarea

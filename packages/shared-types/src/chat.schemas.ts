@@ -35,7 +35,15 @@ export const updateVolunteerProfileSchema = z.object({
     .min(5, "Numero de documento invalido")
     .max(20, "Numero de documento invalido"),
   professional_license: z.string().trim().max(40).optional(),
-  photo_url: z.string().url("Sube tu foto de perfil"),
+// Desde que el bucket de fotos de analistas es privado, esto guarda
+  // la RUTA dentro del bucket, no una URL: el enlace se firma al
+  // momento de mostrarla. Se aceptan URLs completas solo por las fotos
+  // que quedaron de cuando el bucket era publico.
+  photo_url: z
+    .string()
+    .trim()
+    .min(3, "Sube tu foto de perfil")
+    .max(500),
 });
 export type UpdateVolunteerProfileInput = z.infer<
   typeof updateVolunteerProfileSchema
@@ -91,3 +99,51 @@ export const reportAbuseSchema = z
     { path: ["details"], message: "Cuéntanos qué pasó" },
   );
 export type ReportAbuseInput = z.infer<typeof reportAbuseSchema>;
+
+// ---------- Agendar la visita dentro del chat ----------
+
+export const messageKindSchema = z.enum(["TEXT", "DATE_PROPOSAL"]);
+export type MessageKind = z.infer<typeof messageKindSchema>;
+
+export const proposalStatusSchema = z.enum([
+  "PENDING",
+  "ACCEPTED",
+  "DECLINED",
+  "SUPERSEDED",
+]);
+export type ProposalStatus = z.infer<typeof proposalStatusSchema>;
+
+export const PROPOSAL_STATUS_LABELS: Record<ProposalStatus, string> = {
+  PENDING: "Esperando respuesta",
+  ACCEPTED: "Acordada",
+  DECLINED: "No le sirvio",
+  SUPERSEDED: "Se propuso otra fecha despues",
+};
+
+// Cuanto se puede proponer hacia adelante. Mas alla de un mes deja de
+// ser "cuadrar una visita" y probablemente es un error de digitacion.
+const MAX_DAYS_AHEAD = 30;
+
+export const proposeVisitDateSchema = z.object({
+  proposed_date: z
+    .string()
+    .datetime({ offset: true })
+    .refine((value) => new Date(value).getTime() > Date.now(), {
+      message: "La fecha propuesta ya paso",
+    })
+    .refine(
+      (value) =>
+        new Date(value).getTime() <
+        Date.now() + MAX_DAYS_AHEAD * 24 * 60 * 60 * 1000,
+      { message: `Propon una fecha dentro de los proximos ${MAX_DAYS_AHEAD} dias` },
+    ),
+  // Mensaje opcional que acompaña la propuesta ("me queda mejor en la
+  // mañana"), para no obligar a mandar dos burbujas.
+  note: z.string().trim().max(300).optional(),
+});
+export type ProposeVisitDateInput = z.infer<typeof proposeVisitDateSchema>;
+
+export const respondToProposalSchema = z.object({
+  accept: z.boolean(),
+});
+export type RespondToProposalInput = z.infer<typeof respondToProposalSchema>;

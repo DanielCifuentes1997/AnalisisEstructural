@@ -8,7 +8,19 @@ import {
   type PrismaMock,
 } from "../test-utils/prisma-mock";
 import type { ChatService } from "../chat/chat.service";
+import type { StorageService } from "../storage/storage.service";
 import { AdminService } from "./admin.service";
+
+
+/** StorageService simulado: las fotos privadas se firman, no se leen. */
+const createStorageMock = () => ({
+  resolveVolunteerPhotoUrl: jest
+    .fn()
+    .mockImplementation(async (stored: string | null) =>
+      stored ? `https://firmada.example/${stored}?token=abc` : null,
+    ),
+  createSignedUploadUrl: jest.fn(),
+});
 
 const ADMIN_ID = "user-admin";
 const VOLUNTEER_ID = "vol-1";
@@ -55,6 +67,7 @@ describe("AdminService", () => {
       audit as unknown as AuditService,
       new RequestStateMachine(),
       chat as unknown as ChatService,
+      createStorageMock() as unknown as StorageService,
     );
   });
 
