@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   Logger,
@@ -86,28 +87,38 @@ export class VisitsService {
       );
     }
 
-    // Nota: esta verificacion no es atomica frente a dos voluntarios
-    // aceptando el mismo caso al mismo tiempo (race condition conocida,
-    // pendiente de resolver con un UPDATE condicional o transaccion
-    // serializable en una siguiente iteracion).
+    // Valida contra la maquina de estados para dar un mensaje claro
+    // cuando la solicitud esta en un estado que nunca podria aceptarse
+    // (ya completada, cancelada...).
     this.stateMachine.assertTransition(request.state, "ASSIGNED");
 
     const pin = generatePin();
 
-    const [visit] = await this.prisma.$transaction([
-      this.prisma.visits.create({
+    // El reclamo del caso es un UPDATE condicional: la base solo deja
+    // pasar al primero que llegue, porque el WHERE exige que siga en
+    // WAITING_VOLUNTEER. Si dos analistas aceptan a la vez, el segundo
+    // recibe count = 0 en vez de crear una visita duplicada.
+    const visit = await this.prisma.$transaction(async (tx) => {
+      const claimed = await tx.propertyRequests.updateMany({
+        where: { id: requestId, state: "WAITING_VOLUNTEER" },
+        data: { state: "ASSIGNED" },
+      });
+
+      if (claimed.count === 0) {
+        throw new ConflictException(
+          "Otro analista acaba de tomar este caso. Busca otro en el mapa.",
+        );
+      }
+
+      return tx.visits.create({
         data: {
           request_id: requestId,
           volunteer_id: volunteer.id,
           otp_hash: hashPin(pin),
           pin_code: pin,
         },
-      }),
-      this.prisma.propertyRequests.update({
-        where: { id: requestId },
-        data: { state: "ASSIGNED" },
-      }),
-    ]);
+      });
+    });
 
     // El voluntario NUNCA debe conocer el PIN de antemano: lo custodia el
     // ciudadano, que lo ve en su propia pantalla (GET /v1/requests/:id) y
