@@ -25,6 +25,7 @@
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
     "twilio": "^6.1.0",
+    "web-push": "^3.6.7",
     "zod": "^4.4.3"
   },
   "devDependencies": {
@@ -36,6 +37,7 @@
     "@types/express": "^5.0.6",
     "@types/jest": "^30.0.0",
     "@types/node": "^22.15.3",
+    "@types/web-push": "^3.6.4",
     "dotenv-cli": "^7.4.2",
     "eslint": "^9.39.1",
     "jest": "^30.4.2",

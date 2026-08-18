@@ -3,6 +3,7 @@ import type { PrismaService } from "../prisma/prisma.service";
 import { createPrismaMock, type PrismaMock } from "../test-utils/prisma-mock";
 import { RequestStateMachine } from "../workflow/request-state-machine.service";
 import type { StorageService } from "../storage/storage.service";
+import type { PushService } from "../push/push.service";
 import { ChatService } from "./chat.service";
 
 
@@ -14,6 +15,15 @@ const createStorageMock = () => ({
       stored ? `https://firmada.example/${stored}?token=abc` : null,
     ),
   createSignedUploadUrl: jest.fn(),
+});
+
+
+/** PushService simulado: los avisos no deben tumbar nada si fallan. */
+const createPushMock = () => ({
+  sendToUser: jest.fn().mockResolvedValue(1),
+  subscribe: jest.fn(),
+  unsubscribe: jest.fn(),
+  getPublicKey: jest.fn(),
 });
 
 const CITIZEN_ID = "user-citizen";
@@ -39,15 +49,18 @@ const visitFixture = (overrides: Record<string, unknown> = {}) => ({
 describe("ChatService", () => {
   let prisma: PrismaMock;
   let storage: ReturnType<typeof createStorageMock>;
+  let push: ReturnType<typeof createPushMock>;
   let service: ChatService;
 
   beforeEach(() => {
     prisma = createPrismaMock();
     storage = createStorageMock();
+    push = createPushMock();
     service = new ChatService(
       prisma as unknown as PrismaService,
       new RequestStateMachine(),
       storage as unknown as StorageService,
+      push as unknown as PushService,
     );
     prisma.visits.findUnique.mockResolvedValue(visitFixture());
     prisma.messages.findMany.mockResolvedValue([]);
@@ -124,6 +137,31 @@ describe("ChatService", () => {
           body: "Buenas tardes",
         },
       });
+    });
+
+    it("avisa al otro lado que le escribieron", async () => {
+      prisma.messages.create.mockResolvedValue({ id: "msg-1" });
+
+      await service.sendMessage(CITIZEN_ID, VISIT_ID, { body: "Buenas tardes" });
+
+      expect(push.sendToUser).toHaveBeenCalledWith(
+        VOLUNTEER_USER_ID,
+        expect.objectContaining({
+          title: "Mensaje de Rosa Delgado",
+          body: "Buenas tardes",
+        }),
+      );
+    });
+
+    it("el analista que escribe avisa al ciudadano", async () => {
+      prisma.messages.create.mockResolvedValue({ id: "msg-1" });
+
+      await service.sendMessage(VOLUNTEER_USER_ID, VISIT_ID, { body: "Voy" });
+
+      expect(push.sendToUser).toHaveBeenCalledWith(
+        CITIZEN_ID,
+        expect.objectContaining({ title: "Mensaje de Elena Vargas" }),
+      );
     });
 
     it("cierra el chat cuando la visita ya termino", async () => {

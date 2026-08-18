@@ -16,6 +16,7 @@ import type {
 import { MAX_ACTIVE_VISITS } from "@proyecto/shared-types";
 import { AuditService } from "../audit/audit.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { PushService } from "../push/push.service";
 import { RequestStateMachine } from "../workflow/request-state-machine.service";
 import { generatePin, hashPin } from "./pin.util";
 
@@ -45,6 +46,7 @@ export class VisitsService {
     private readonly prisma: PrismaService,
     private readonly stateMachine: RequestStateMachine,
     private readonly audit: AuditService,
+    private readonly push: PushService,
   ) {}
 
   // Un caso sigue "ocupando cupo" mientras no se haya cerrado ni
@@ -128,6 +130,15 @@ export class VisitsService {
     );
 
     const location = await this.getRequestExactLocation(requestId);
+
+    // El aviso es lo que evita que el ciudadano tenga que estar
+    // revisando la app para saber si alguien lo tomo.
+    await this.push.sendToUser(request.citizen_id, {
+      title: "Ya tienes analista",
+      body: `${volunteer.full_name} va a acompañarte. Abre la app para escribirle y cuadrar la visita.`,
+      url: `/requests/${requestId}`,
+      tag: `request-${requestId}`,
+    });
 
     return { ...location, visit_id: visit.id };
   }
@@ -263,6 +274,13 @@ export class VisitsService {
       data: { state: "VERIFICATION_PENDING" },
     });
 
+    await this.push.sendToUser(visit.request.citizen_id, {
+      title: "Tu analista llegó",
+      body: "Abre la app para ver el código que debes dictarle en persona.",
+      url: `/requests/${visit.request_id}`,
+      tag: `request-${visit.request_id}`,
+    });
+
     return {
       message: "Check-in exitoso. Solicita el PIN al ciudadano.",
       distance_meters: Math.round(distance),
@@ -314,6 +332,13 @@ export class VisitsService {
     await this.prisma.propertyRequests.update({
       where: { id: visit.request_id },
       data: { state: "COMPLETED" },
+    });
+
+    await this.push.sendToUser(visit.request.citizen_id, {
+      title: "Tu nota de visita está lista",
+      body: "Ya puedes leer las observaciones de tu analista.",
+      url: `/requests/${visit.request_id}`,
+      tag: `request-${visit.request_id}`,
     });
 
     return note;

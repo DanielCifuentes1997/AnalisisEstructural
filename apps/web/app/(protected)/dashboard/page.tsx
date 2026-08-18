@@ -4,6 +4,7 @@ import Link from "next/link";
 import { AppHeader } from "../../../components/ui/AppHeader";
 import { Card } from "../../../components/ui/Card";
 import { Spinner } from "../../../components/ui/Spinner";
+import { PushPrompt } from "../../../components/push/PushPrompt";
 import { RequestList } from "../../../components/requests/RequestList";
 import { useMyRequests } from "../../../lib/hooks/use-requests";
 
@@ -24,6 +25,8 @@ export default function DashboardPage() {
             Aquí ves el estado de cada vivienda que has reportado.
           </p>
         </div>
+
+        <PushPrompt role="CITIZEN" />
 
         <Link href="/requests/new">
           <span className="mb-6 flex min-h-14 w-full items-center justify-center rounded-xl bg-brand-700 px-6 text-base font-medium text-white shadow-sm transition-colors hover:bg-brand-800">

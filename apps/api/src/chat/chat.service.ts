@@ -10,6 +10,7 @@ import type {
   SendMessageInput,
 } from "@proyecto/shared-types";
 import { PrismaService } from "../prisma/prisma.service";
+import { PushService } from "../push/push.service";
 import { StorageService } from "../storage/storage.service";
 import { RequestStateMachine } from "../workflow/request-state-machine.service";
 
@@ -22,7 +23,16 @@ export class ChatService {
     private readonly prisma: PrismaService,
     private readonly stateMachine: RequestStateMachine,
     private readonly storage: StorageService,
+    private readonly push: PushService,
   ) {}
+
+  /** A quien hay que avisarle: siempre al otro lado de la conversacion. */
+  private counterpartUserId(
+    visit: { request: { citizen_id: string }; volunteer: { user_id: string } },
+    senderIsCitizen: boolean,
+  ) {
+    return senderIsCitizen ? visit.volunteer.user_id : visit.request.citizen_id;
+  }
 
   // Proponer fecha solo tiene sentido antes de que el analista llegue.
   private static readonly SCHEDULABLE_STATES = ["ASSIGNED", "SCHEDULED"];
@@ -157,6 +167,18 @@ export class ChatService {
       }),
     ]);
 
+    const proposerName = isCitizen
+      ? visit.request.reporter_name
+      : visit.volunteer.full_name;
+    await this.push.sendToUser(this.counterpartUserId(visit, isCitizen), {
+      title: "Te proponen una fecha",
+      body: `${proposerName} propuso una fecha para la visita. Responde si te sirve.`,
+      url: isCitizen
+        ? `/volunteer/visits/${visitId}`
+        : `/requests/${visit.request_id}`,
+      tag: `chat-${visitId}`,
+    });
+
     return proposal;
   }
 
@@ -187,11 +209,24 @@ export class ChatService {
       throw new ForbiddenException("Debe responder la otra persona");
     }
 
+    const notifyProposer = async (accepted: boolean) => {
+      await this.push.sendToUser(proposal.sender_id, {
+        title: accepted ? "Fecha acordada" : "No le sirvió la fecha",
+        body: accepted
+          ? "La otra persona aceptó la fecha que propusiste."
+          : "Propón otra fecha desde el chat.",
+        url: `/visits/${visitId}`,
+        tag: `chat-${visitId}`,
+      });
+    };
+
     if (!input.accept) {
-      return this.prisma.messages.update({
+      const declined = await this.prisma.messages.update({
         where: { id: proposalId },
         data: { proposal_status: "DECLINED" },
       });
+      await notifyProposer(false);
+      return declined;
     }
 
     // Si la solicitud ya estaba SCHEDULED solo cambia la fecha: la
@@ -240,7 +275,7 @@ export class ChatService {
       );
     }
 
-    return this.prisma.messages.create({
+    const message = await this.prisma.messages.create({
       data: {
         visit_id: visitId,
         sender_id: userId,
@@ -248,6 +283,21 @@ export class ChatService {
         body: input.body,
       },
     });
+
+    const senderName = isCitizen
+      ? visit.request.reporter_name
+      : visit.volunteer.full_name;
+    await this.push.sendToUser(this.counterpartUserId(visit, isCitizen), {
+      title: `Mensaje de ${senderName}`,
+      // El tag agrupa: diez mensajes seguidos no producen diez avisos.
+      body: input.body.slice(0, 120),
+      url: isCitizen
+        ? `/volunteer/visits/${visitId}`
+        : `/requests/${visit.request_id}`,
+      tag: `chat-${visitId}`,
+    });
+
+    return message;
   }
 
   /**

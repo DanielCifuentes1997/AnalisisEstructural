@@ -18,7 +18,11 @@
     "NEXT_PUBLIC_API_URL",
     "NEXT_PUBLIC_RESPONSABLE_NOMBRE",
     "NEXT_PUBLIC_RESPONSABLE_CIUDAD",
-    "NEXT_PUBLIC_RESPONSABLE_CORREO"
+    "NEXT_PUBLIC_RESPONSABLE_CORREO",
+    "VAPID_PUBLIC_KEY",
+    "VAPID_PRIVATE_KEY",
+    "VAPID_SUBJECT",
+    "NEXT_PUBLIC_VAPID_PUBLIC_KEY"
   ],
   "tasks": {
     "build": {
@@ -49,6 +53,11 @@
     "dev": {
       "cache": false,
       "persistent": true
+    },
+    "test": {
+      "dependsOn": [
+        "^build"
+      ]
     }
   }
 }

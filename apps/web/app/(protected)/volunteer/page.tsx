@@ -5,6 +5,7 @@ import { AppHeader } from "../../../components/ui/AppHeader";
 import { Card } from "../../../components/ui/Card";
 import { Spinner } from "../../../components/ui/Spinner";
 import { StatusBadge } from "../../../components/ui/StatusBadge";
+import { PushPrompt } from "../../../components/push/PushPrompt";
 import { VOLUNTEER_NAV } from "../../../components/volunteer/nav";
 import { useRequireVolunteerRole } from "../../../lib/hooks/use-require-volunteer-role";
 import { useMyVisits } from "../../../lib/hooks/use-visit";
@@ -39,6 +40,8 @@ export default function VolunteerHomePage() {
             Los casos que has aceptado. Puedes volver a ellos cuando quieras.
           </p>
         </div>
+
+        <PushPrompt role="VOLUNTEER" />
 
         <Link href="/volunteer/map">
           <span className="mb-6 flex min-h-14 w-full items-center justify-center rounded-xl bg-brand-700 px-6 text-base font-medium text-white shadow-sm transition-colors hover:bg-brand-800">

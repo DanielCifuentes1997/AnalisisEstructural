@@ -7,6 +7,7 @@ import { AuthModule } from "./auth/auth.module";
 import { ChatModule } from "./chat/chat.module";
 import { HealthController } from "./health/health.controller";
 import { PrismaModule } from "./prisma/prisma.module";
+import { PushModule } from "./push/push.module";
 import { RequestsModule } from "./requests/requests.module";
 import { StorageModule } from "./storage/storage.module";
 import { VolunteersModule } from "./volunteers/volunteers.module";
@@ -19,6 +20,7 @@ import { WorkflowModule } from "./workflow/workflow.module";
     }),
     PrismaModule,
     AuditModule,
+    PushModule,
     AuthModule,
     WorkflowModule,
     RequestsModule,

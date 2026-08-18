@@ -119,9 +119,16 @@ export function RegisterForm({ onSubmit, isLoading, errorMessage }: RegisterForm
       )}
 
       <div className="flex flex-col gap-1">
-        <label className="text-sm font-medium text-sand-700">
-          Foto de perfil (la vera la persona que ayudes)
+        <label
+          htmlFor="foto-de-perfil"
+          className="text-sm font-medium text-sand-700"
+        >
+          Foto de perfil
         </label>
+        <p className="text-xs text-sand-500">
+          Solo la ve la persona a la que le aceptes el caso y el equipo que
+          administra la plataforma. No es publica.
+        </p>
         <div className="flex items-center gap-4">
           {photoPreview && (
             // eslint-disable-next-line @next/next/no-img-element -- blob: URL de vista previa local
@@ -131,15 +138,19 @@ export function RegisterForm({ onSubmit, isLoading, errorMessage }: RegisterForm
               className="h-16 w-16 rounded-full object-cover"
             />
           )}
-          <label className="flex min-h-12 flex-1 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-sand-300 text-sm text-sand-500 hover:bg-sand-50">
+          <label
+            htmlFor="foto-de-perfil"
+            className="flex min-h-12 flex-1 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-sand-300 text-sm text-sand-500 hover:bg-sand-50"
+          >
             {uploadPhoto.isPending ? "Subiendo..." : "Elegir foto"}
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => handlePhotoChange(e.target.files?.[0])}
-            />
           </label>
+          <input
+            id="foto-de-perfil"
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => handlePhotoChange(e.target.files?.[0])}
+          />
         </div>
       </div>
 

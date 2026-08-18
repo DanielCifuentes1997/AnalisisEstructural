@@ -15,7 +15,17 @@ import {
   type PrismaMock,
 } from "../test-utils/prisma-mock";
 import { hashPin } from "./pin.util";
+import type { PushService } from "../push/push.service";
 import { VisitsService } from "./visits.service";
+
+
+/** PushService simulado: los avisos no deben tumbar nada si fallan. */
+const createPushMock = () => ({
+  sendToUser: jest.fn().mockResolvedValue(1),
+  subscribe: jest.fn(),
+  unsubscribe: jest.fn(),
+  getPublicKey: jest.fn(),
+});
 
 const VOLUNTEER = { id: "vol-1", user_id: "user-vol", is_active: true };
 const REQUEST_ID = "req-1";
@@ -23,15 +33,18 @@ const REQUEST_ID = "req-1";
 describe("VisitsService", () => {
   let prisma: PrismaMock;
   let audit: ReturnType<typeof createAuditMock>;
+  let push: ReturnType<typeof createPushMock>;
   let service: VisitsService;
 
   beforeEach(() => {
     prisma = createPrismaMock();
     audit = createAuditMock();
+    push = createPushMock();
     service = new VisitsService(
       prisma as unknown as PrismaService,
       new RequestStateMachine(),
       audit as unknown as AuditService,
+      push as unknown as PushService,
     );
     prisma.$queryRaw.mockResolvedValue([
       { id: REQUEST_ID, latitude: 4.5, longitude: -75.6 },
@@ -78,6 +91,27 @@ describe("VisitsService", () => {
         service.acceptRequest("user-vol", REQUEST_ID),
       ).rejects.toBeInstanceOf(ConflictException);
       expect(prisma.visits.create).not.toHaveBeenCalled();
+    });
+
+    // Sin esto el ciudadano tendria que estar revisando la app para
+    // saber si alguien lo tomo.
+    it("avisa al ciudadano que ya tiene analista", async () => {
+      prisma.volunteerProfiles.findUnique.mockResolvedValue({
+        ...VOLUNTEER,
+        full_name: "Elena Vargas",
+      });
+      prisma.propertyRequests.findUnique.mockResolvedValue({
+        id: REQUEST_ID,
+        state: "WAITING_VOLUNTEER",
+        citizen_id: "user-citizen",
+      });
+
+      await service.acceptRequest("user-vol", REQUEST_ID);
+
+      expect(push.sendToUser).toHaveBeenCalledWith(
+        "user-citizen",
+        expect.objectContaining({ title: "Ya tienes analista" }),
+      );
     });
 
     it("no deja aceptar mas de los casos permitidos a la vez", async () => {

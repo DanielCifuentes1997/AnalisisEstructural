@@ -9,6 +9,7 @@ import type {
   RegisterVolunteerInput,
   ReleaseVisitInput,
   ProposeVisitDateInput,
+  PushSubscriptionInput,
   ReportAbuseInput,
   RespondToProposalInput,
   RequestOtpInput,
@@ -335,6 +336,25 @@ export const apiClient = {
       method: "POST",
       accessToken,
       body: JSON.stringify(input),
+    }),
+
+  // ---------- Notificaciones push ----------
+
+  getPushPublicKey: () =>
+    request<{ publicKey: string | null }>("/v1/push/public-key"),
+
+  subscribeToPush: (accessToken: string, input: PushSubscriptionInput) =>
+    request<unknown>("/v1/push/subscribe", {
+      method: "POST",
+      accessToken,
+      body: JSON.stringify(input),
+    }),
+
+  unsubscribeFromPush: (accessToken: string, endpoint: string) =>
+    request<{ message: string }>("/v1/push/subscribe", {
+      method: "DELETE",
+      accessToken,
+      body: JSON.stringify({ endpoint }),
     }),
 
   // ---------- Panel de administracion ----------

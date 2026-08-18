@@ -112,6 +112,27 @@ model Users {
   VolunteerProfile  VolunteerProfiles?
   property_requests PropertyRequests[]
   messages          Messages[]
+  push_subscriptions PushSubscriptions[]
+}
+
+// Buzon de notificaciones de un dispositivo concreto. Una persona puede
+// tener varios (celular, computador). La entrega la hacen Google,
+// Mozilla o Apple; nosotros solo guardamos la direccion y las llaves de
+// cifrado que nos dio el navegador.
+model PushSubscriptions {
+  id         String   @id @default(uuid())
+  user_id    String
+  endpoint   String   @unique
+  p256dh     String
+  auth       String
+  created_at DateTime @default(now())
+  // Se marca cuando el buzon deja de existir (el navegador respondio
+  // 404/410) para no seguir intentando entregarle.
+  failed_at  DateTime?
+
+  user       Users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
 }
 
 // Voluntarios de acompañamiento comunitario: sin cruce contra COPNIA/CPNAA,
